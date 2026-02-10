@@ -146,6 +146,9 @@ def main():
             st.Page(os.path.join(pages_dir, "page_alm.py"), title="Gestion actif-passif", icon=":material/balance:"),
             st.Page(os.path.join(pages_dir, "page_reports.py"), title="Rapports", icon=":material/description:"),
         ],
+        "Aide": [
+            st.Page(os.path.join(pages_dir, "page_documentation.py"), title="Documentation", icon=":material/menu_book:"),
+        ],
     }
 
     pg = st.navigation(pages)
