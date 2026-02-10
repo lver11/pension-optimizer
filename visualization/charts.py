@@ -502,6 +502,253 @@ class ChartBuilder:
         )
         return fig
 
+    # =============================================================
+    # Graphiques Alpha Portable
+    # =============================================================
+
+    @staticmethod
+    def alpha_decomposition_bar(
+        combined_weights: np.ndarray,
+        beta_weights: np.ndarray,
+        alpha_overlay: np.ndarray,
+        names: List[str],
+        title: str = "Decomposition Beta / Alpha overlay",
+    ) -> go.Figure:
+        """Barres empilees montrant beta + alpha overlay = combine."""
+        fig = go.Figure()
+
+        # Beta (base)
+        fig.add_trace(go.Bar(
+            name="Portefeuille beta",
+            x=names,
+            y=beta_weights * 100,
+            marker_color=CHART_COLORS[0],
+            opacity=0.8,
+            hovertemplate="%{x}<br>Beta: %{y:.2f}%<extra></extra>",
+        ))
+
+        # Alpha overlay (peut etre negatif)
+        colors_alpha = [
+            CHART_COLORS[2] if v >= 0 else CHART_COLORS[3]
+            for v in alpha_overlay
+        ]
+        fig.add_trace(go.Bar(
+            name="Overlay alpha",
+            x=names,
+            y=alpha_overlay * 100,
+            marker_color=colors_alpha,
+            opacity=0.7,
+            hovertemplate="%{x}<br>Overlay: %{y:+.2f}%<extra></extra>",
+        ))
+
+        # Ligne du combine
+        fig.add_trace(go.Scatter(
+            name="Portefeuille combine",
+            x=names,
+            y=combined_weights * 100,
+            mode="markers+lines",
+            marker=dict(size=8, color="black", symbol="diamond"),
+            line=dict(color="black", width=1.5, dash="dot"),
+            hovertemplate="%{x}<br>Combine: %{y:.2f}%<extra></extra>",
+        ))
+
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=16)),
+            barmode="relative",
+            yaxis_title="Allocation (%)",
+            xaxis_tickangle=-45,
+            height=550,
+            margin=dict(t=60, b=140),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        )
+        fig.add_hline(y=0, line_dash="solid", line_color="gray", line_width=0.5)
+        return fig
+
+    @staticmethod
+    def alpha_frontier_chart(
+        frontier_results: List,
+        title: str = "Frontiere efficiente alpha / tracking error",
+    ) -> go.Figure:
+        """Nuage alpha vs tracking error avec frontiere."""
+        if not frontier_results:
+            fig = go.Figure()
+            fig.update_layout(title="Aucune donnee de frontiere alpha")
+            return fig
+
+        alphas = [r.alpha * 100 for r in frontier_results]
+        tes = [r.tracking_error * 100 for r in frontier_results]
+        irs = [r.information_ratio for r in frontier_results]
+        leverages = [r.gross_leverage for r in frontier_results]
+        net_alphas = [r.net_alpha * 100 for r in frontier_results]
+
+        fig = go.Figure()
+
+        # Frontiere alpha brut
+        fig.add_trace(go.Scatter(
+            x=tes, y=alphas,
+            mode="lines+markers",
+            name="Alpha brut",
+            line=dict(color=CHART_COLORS[0], width=3),
+            marker=dict(size=8, color=leverages,
+                        colorscale="Viridis", showscale=True,
+                        colorbar=dict(title="Levier brut", x=1.02)),
+            hovertemplate=(
+                "TE: %{x:.2f}%<br>"
+                "Alpha brut: %{y:.2f}%<br>"
+                "Levier: %{marker.color:.2f}<extra></extra>"
+            ),
+        ))
+
+        # Frontiere alpha net
+        fig.add_trace(go.Scatter(
+            x=tes, y=net_alphas,
+            mode="lines+markers",
+            name="Alpha net (apres couts)",
+            line=dict(color=CHART_COLORS[3], width=2, dash="dash"),
+            marker=dict(size=5),
+            hovertemplate=(
+                "TE: %{x:.2f}%<br>"
+                "Alpha net: %{y:.2f}%<extra></extra>"
+            ),
+        ))
+
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=16)),
+            xaxis_title="Tracking Error (%)",
+            yaxis_title="Alpha (%)",
+            height=550,
+            margin=dict(t=60, b=60),
+            legend=dict(orientation="h", yanchor="bottom", y=-0.15),
+            hovermode="closest",
+        )
+        fig.add_hline(y=0, line_dash="solid", line_color="gray", line_width=0.5)
+        return fig
+
+    @staticmethod
+    def leverage_waterfall(
+        long_exposure: float,
+        short_exposure: float,
+        financing_cost_bps: float,
+        alpha_bps: float,
+        net_alpha_bps: float,
+        title: str = "Decomposition du levier et couts",
+    ) -> go.Figure:
+        """Diagramme en cascade : exposition -> couts -> alpha net."""
+        categories = [
+            "Exposition longue",
+            "Exposition courte",
+            "Levier brut",
+            "Alpha brut",
+            "Cout financement",
+            "Alpha net",
+        ]
+        values = [
+            long_exposure * 100,
+            short_exposure * 100,
+            0,  # Total
+            alpha_bps,
+            -financing_cost_bps,
+            0,  # Total
+        ]
+        measures = ["relative", "relative", "total", "relative", "relative", "total"]
+
+        fig = go.Figure(go.Waterfall(
+            name="Decomposition",
+            orientation="v",
+            measure=measures,
+            x=categories,
+            y=values,
+            textposition="outside",
+            text=[
+                f"{long_exposure:.0%}",
+                f"{short_exposure:.0%}",
+                f"{(long_exposure + short_exposure):.0%}",
+                f"+{alpha_bps:.0f} bps",
+                f"-{financing_cost_bps:.0f} bps",
+                f"{net_alpha_bps:.0f} bps",
+            ],
+            connector=dict(line=dict(color="rgb(63, 63, 63)")),
+            increasing=dict(marker=dict(color=CHART_COLORS[2])),
+            decreasing=dict(marker=dict(color=CHART_COLORS[3])),
+            totals=dict(marker=dict(color=CHART_COLORS[0])),
+        ))
+
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=16)),
+            yaxis_title="Valeur",
+            height=500,
+            margin=dict(t=60, b=80),
+            showlegend=False,
+        )
+        return fig
+
+    @staticmethod
+    def risk_decomposition_pie(
+        beta_risk_pct: float,
+        alpha_risk_pct: float,
+        interaction_pct: float,
+        title: str = "Decomposition du risque : Beta vs Alpha",
+    ) -> go.Figure:
+        """Diagramme en anneau : contribution beta vs alpha au risque total."""
+        labels = ["Risque beta", "Risque alpha", "Interaction"]
+        values = [
+            max(0, beta_risk_pct * 100),
+            max(0, alpha_risk_pct * 100),
+            max(0, interaction_pct * 100),
+        ]
+        colors = [CHART_COLORS[0], CHART_COLORS[1], CHART_COLORS[7]]
+
+        fig = go.Figure(data=[go.Pie(
+            labels=labels,
+            values=values,
+            hole=0.5,
+            marker_colors=colors,
+            textinfo="label+percent",
+            textposition="outside",
+            hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
+        )])
+
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=16)),
+            height=450,
+            margin=dict(t=60, b=80, l=20, r=20),
+            annotations=[dict(text="Risque", x=0.5, y=0.5, font_size=16, showarrow=False)],
+        )
+        return fig
+
+    @staticmethod
+    def overlay_heatmap(
+        alpha_overlay: np.ndarray,
+        asset_names: List[str],
+        benchmark_name: str = "Benchmark",
+        title: str = "Carte de chaleur de l'overlay alpha",
+    ) -> go.Figure:
+        """Heatmap montrant les surponderations/sous-ponderations vs benchmark."""
+        # Reshape pour heatmap
+        overlay_pct = alpha_overlay * 100
+        z = overlay_pct.reshape(1, -1)
+
+        fig = go.Figure(data=go.Heatmap(
+            z=z,
+            x=asset_names,
+            y=[f"vs {benchmark_name}"],
+            colorscale="RdBu",
+            zmid=0,
+            text=[[f"{v:+.2f}%" for v in overlay_pct]],
+            texttemplate="%{text}",
+            textfont={"size": 11},
+            hovertemplate="%{x}<br>Overlay: %{text}<extra></extra>",
+            colorbar=dict(title="Overlay (%)", ticksuffix="%"),
+        ))
+
+        fig.update_layout(
+            title=dict(text=title, font=dict(size=16)),
+            height=200,
+            margin=dict(t=60, b=40, l=20, r=20),
+            xaxis_tickangle=-45,
+        )
+        return fig
+
     @staticmethod
     def esg_radar(
         scores: Dict[str, float],

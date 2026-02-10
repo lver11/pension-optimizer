@@ -1,10 +1,11 @@
 """
 Contraintes reglementaires specifiques au Quebec pour les fonds de pension.
+Inclut les regles pour les strategies avec levier (alpha portable).
 """
 
 import numpy as np
 from typing import Dict, List, Tuple
-from constraints.manager import GroupConstraint
+from constraints.manager import GroupConstraint, LeveragedConstraintSet
 
 
 class QuebecPensionRegulations:
@@ -146,4 +147,134 @@ class QuebecPensionRegulations:
             "action_recommandee": action,
             "couleur": color,
             "ecart_cible": funded_ratio - target_ratio,
+        }
+
+
+class PortableAlphaRegulations:
+    """Contraintes reglementaires pour les strategies d'alpha portable.
+
+    L'alpha portable utilise le levier via des positions courtes et des
+    instruments derives. Les caisses de retraite du Quebec sont soumises
+    a des limites specifiques sur l'utilisation du levier.
+    """
+
+    # Limites reglementaires pour les strategies avec levier
+    MAX_GROSS_LEVERAGE = 2.0       # Levier brut max 200%
+    MAX_SHORT_EXPOSURE = 0.50      # Exposition courte max 50% de l'actif net
+    MAX_SHORT_PER_ASSET = 0.15     # Position courte max par actif 15%
+    MAX_TOTAL_DERIVATIVES = 0.30   # Notionnel derives max 30%
+    MIN_COLLATERAL_RATIO = 1.05    # Ratio de collatéral minimum 105%
+    MAX_COUNTERPARTY = 0.10        # Exposition max par contrepartie 10%
+
+    # Actifs eligibles a la vente a decouvert
+    # Seuls les actifs liquides (score >= 0.75) sont eligibles
+    SHORT_ELIGIBLE_INDICES = [0, 1, 2, 3, 4, 5, 6, 10]  # Equities + Bonds + Commodities
+
+    @classmethod
+    def get_leverage_group_constraints(cls) -> List[GroupConstraint]:
+        """Contraintes de groupe pour un portefeuille avec levier."""
+        return [
+            GroupConstraint(
+                name_fr="Actions totales (nettes) <= 70%",
+                asset_indices=QuebecPensionRegulations.EQUITY_INDICES,
+                min_allocation=-0.20,  # Short equity autorise
+                max_allocation=0.70,
+            ),
+            GroupConstraint(
+                name_fr="Obligations totales (nettes)",
+                asset_indices=QuebecPensionRegulations.BOND_INDICES,
+                min_allocation=-0.15,
+                max_allocation=0.70,
+            ),
+            GroupConstraint(
+                name_fr="Actifs alternatifs <= 40% (long-only)",
+                asset_indices=QuebecPensionRegulations.ALTERNATIVE_INDICES,
+                min_allocation=0.0,
+                max_allocation=QuebecPensionRegulations.MAX_ALTERNATIVES,
+            ),
+        ]
+
+    @classmethod
+    def validate_leverage_compliance(
+        cls,
+        weights: np.ndarray,
+        asset_names: List[str],
+    ) -> Tuple[bool, List[str]]:
+        """Valide la conformite reglementaire d'une allocation avec levier."""
+        violations = []
+        tol = 1e-6
+
+        # Levier brut
+        gross = np.sum(np.abs(weights))
+        if gross > cls.MAX_GROSS_LEVERAGE + tol:
+            violations.append(
+                f"Levier brut ({gross:.1%}) excede la limite reglementaire de {cls.MAX_GROSS_LEVERAGE:.0%}"
+            )
+
+        # Exposition courte totale
+        short_exposure = np.sum(np.abs(weights[weights < 0]))
+        if short_exposure > cls.MAX_SHORT_EXPOSURE + tol:
+            violations.append(
+                f"Exposition courte ({short_exposure:.1%}) excede la limite de {cls.MAX_SHORT_EXPOSURE:.0%}"
+            )
+
+        # Position courte par actif
+        for i in range(len(weights)):
+            if weights[i] < -tol:
+                if abs(weights[i]) > cls.MAX_SHORT_PER_ASSET + tol:
+                    violations.append(
+                        f"{asset_names[i]}: position courte ({weights[i]:.1%}) excede {cls.MAX_SHORT_PER_ASSET:.0%}"
+                    )
+                if i not in cls.SHORT_ELIGIBLE_INDICES:
+                    violations.append(
+                        f"{asset_names[i]}: vente a decouvert non autorisee (actif illiquide)"
+                    )
+
+        # Actions nettes
+        equity_net = np.sum(weights[QuebecPensionRegulations.EQUITY_INDICES])
+        if equity_net > QuebecPensionRegulations.MAX_EQUITY_TOTAL + tol:
+            violations.append(
+                f"Actions nettes ({equity_net:.1%}) excedent la limite de {QuebecPensionRegulations.MAX_EQUITY_TOTAL:.0%}"
+            )
+
+        # Alternatives (long-only)
+        alt_long = np.sum(np.maximum(weights[QuebecPensionRegulations.ALTERNATIVE_INDICES], 0))
+        if alt_long > QuebecPensionRegulations.MAX_ALTERNATIVES + tol:
+            violations.append(
+                f"Actifs alternatifs long ({alt_long:.1%}) excedent {QuebecPensionRegulations.MAX_ALTERNATIVES:.0%}"
+            )
+
+        return len(violations) == 0, violations
+
+    @classmethod
+    def compute_financing_cost(
+        cls,
+        weights: np.ndarray,
+        financing_spread: float = 0.005,
+        risk_free_rate: float = 0.025,
+    ) -> Dict:
+        """Calcule le cout de financement d'une strategie avec levier.
+
+        Le cout de financement provient :
+        - Des emprunts pour les positions courtes (rebate - financing spread)
+        - Du cout de marge sur le levier excedentaire
+        """
+        short_weights = weights[weights < 0]
+        short_exposure = np.sum(np.abs(short_weights))
+        gross_leverage = np.sum(np.abs(weights))
+        excess_leverage = max(0, gross_leverage - 1.0)
+
+        # Cout de financement annualise
+        short_financing = short_exposure * financing_spread
+        margin_cost = excess_leverage * financing_spread * 0.5  # Cout reduit sur marge
+        total_cost = short_financing + margin_cost
+
+        return {
+            "exposition_courte": short_exposure,
+            "levier_excedentaire": excess_leverage,
+            "cout_short": short_financing,
+            "cout_marge": margin_cost,
+            "cout_total_annuel": total_cost,
+            "cout_total_bps": total_cost * 10000,
+            "spread_financement": financing_spread,
         }

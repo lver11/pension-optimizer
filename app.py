@@ -22,14 +22,14 @@ def main():
         initial_sidebar_state="expanded",
     )
 
-    # Style CSS personnalise
+    # Style CSS personnalise (compatible dark/light mode)
     st.markdown("""
     <style>
         .stMetric {
-            background-color: #f8f9fa;
+            background-color: rgba(255, 255, 255, 0.05);
             padding: 10px;
             border-radius: 8px;
-            border: 1px solid #e9ecef;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .stMetric label {
             font-size: 0.85rem !important;
@@ -42,6 +42,13 @@ def main():
         }
         .block-container {
             padding-top: 1rem;
+        }
+        /* Light mode override */
+        @media (prefers-color-scheme: light) {
+            .stMetric {
+                background-color: #f8f9fa;
+                border: 1px solid #e9ecef;
+            }
         }
     </style>
     """, unsafe_allow_html=True)
@@ -130,6 +137,9 @@ def main():
         "Analyse de risque": [
             st.Page(os.path.join(pages_dir, "page_risk.py"), title="Analytique de risque", icon=":material/warning:"),
             st.Page(os.path.join(pages_dir, "page_monte_carlo.py"), title="Simulation Monte Carlo", icon=":material/casino:"),
+        ],
+        "Strategies": [
+            st.Page(os.path.join(pages_dir, "page_portable_alpha.py"), title="Alpha portable", icon=":material/trending_up:"),
         ],
         "Gestion": [
             st.Page(os.path.join(pages_dir, "page_rebalancing.py"), title="Reequilibrage", icon=":material/sync:"),

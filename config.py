@@ -108,6 +108,13 @@ LABELS_FR = {
     "rebalancing": "Reequilibrage",
     "alm": "Gestion actif-passif",
     "reports": "Rapports",
+    "portable_alpha": "Alpha portable",
+    "beta_portfolio": "Portefeuille beta",
+    "alpha_overlay": "Overlay alpha",
+    "gross_leverage": "Levier brut",
+    "net_exposure": "Exposition nette",
+    "financing_cost": "Cout de financement",
+    "information_ratio": "Ratio d information",
 }
 
 CHART_COLORS = [
@@ -141,3 +148,40 @@ def get_esg_scores() -> np.ndarray:
 
 def get_liquidity_scores() -> np.ndarray:
     return np.array([ASSET_DEFAULTS[ac].liquidity_score for ac in ASSET_CLASSES_ORDER])
+
+def get_asset_durations() -> np.ndarray:
+    return np.array([
+        ASSET_DEFAULTS[ac].duration if ASSET_DEFAULTS[ac].duration is not None else 0.0
+        for ac in ASSET_CLASSES_ORDER
+    ])
+
+
+# ============================================================
+# Alpha Portable - Benchmarks et configuration
+# ============================================================
+
+BENCHMARK_PORTFOLIOS = {
+    "60_40_equilibre": {
+        "nom_fr": "60/40 Equilibre",
+        "weights": np.array([0.10, 0.15, 0.08, 0.07, 0.25, 0.15, 0.05,
+                             0.05, 0.05, 0.03, 0.02, 0.00]),
+    },
+    "politique_placement": {
+        "nom_fr": "Politique de placement actuelle",
+        "weights": DEFAULT_CURRENT_WEIGHTS.copy(),
+    },
+    "obligations_pures": {
+        "nom_fr": "Obligations pures (LDI)",
+        "weights": np.array([0.00, 0.00, 0.00, 0.00, 0.40, 0.30, 0.25,
+                             0.00, 0.00, 0.00, 0.00, 0.05]),
+    },
+    "croissance_70_30": {
+        "nom_fr": "Croissance (70/30)",
+        "weights": np.array([0.15, 0.20, 0.10, 0.10, 0.15, 0.10, 0.05,
+                             0.05, 0.05, 0.03, 0.02, 0.00]),
+    },
+}
+
+# Actifs eligibles a la vente a decouvert (liquides uniquement)
+# Indices : 0-3 equities, 4-6 obligations, 10 matieres premieres
+ALPHA_ELIGIBLE_SHORT = [0, 1, 2, 3, 4, 5, 6, 10]
