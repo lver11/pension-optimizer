@@ -131,9 +131,21 @@ def get_asset_names_fr() -> List[str]:
     return [ASSET_DEFAULTS[ac].nom_fr for ac in ASSET_CLASSES_ORDER]
 
 def get_expected_returns() -> np.ndarray:
+    try:
+        import streamlit as st
+        if "custom_expected_returns" in st.session_state:
+            return st.session_state.custom_expected_returns.copy()
+    except Exception:
+        pass
     return np.array([ASSET_DEFAULTS[ac].expected_return for ac in ASSET_CLASSES_ORDER])
 
 def get_volatilities() -> np.ndarray:
+    try:
+        import streamlit as st
+        if "custom_volatilities" in st.session_state:
+            return st.session_state.custom_volatilities.copy()
+    except Exception:
+        pass
     return np.array([ASSET_DEFAULTS[ac].volatility for ac in ASSET_CLASSES_ORDER])
 
 def get_covariance_matrix() -> np.ndarray:
