@@ -104,7 +104,7 @@ def render():
 
     group_constraints = [
         GroupConstraint("Actions totales", [0, 1, 2, 3], 0.0, max_equity),
-        GroupConstraint("Actifs alternatifs", [7, 8, 9], 0.0, max_alternatives),
+        GroupConstraint("Actifs alternatifs", [7, 8, 9, 10], 0.0, max_alternatives),
         GroupConstraint("Capital investissement", [9], 0.0, max_pe),
         GroupConstraint("Obligations totales", [4, 5, 6], min_bonds, 0.70),
     ]

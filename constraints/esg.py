@@ -21,6 +21,7 @@ class ESGConstraintEngine:
         "Immobilier": 60.0,
         "Infrastructure": 70.0,
         "Capital investissement": 50.0,
+        "Rendement absolu": 50.0,
         "Matieres premieres": 35.0,
         "Encaisse": 75.0,
     }
@@ -37,6 +38,7 @@ class ESGConstraintEngine:
         "Immobilier": 100.0,
         "Infrastructure": 80.0,
         "Capital investissement": 200.0,
+        "Rendement absolu": 120.0,
         "Matieres premieres": 350.0,
         "Encaisse": 10.0,
     }

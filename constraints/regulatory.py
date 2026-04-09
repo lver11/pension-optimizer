@@ -24,10 +24,11 @@ class QuebecPensionRegulations:
     # Indices des classes d'actifs (selon ASSET_CLASSES_ORDER dans config)
     EQUITY_INDICES = [0, 1, 2, 3]          # Actions CDN, US, EAFE, Emergentes
     BOND_INDICES = [4, 5, 6]               # Oblig Gov, Corp, Inflation
-    ALTERNATIVE_INDICES = [7, 8, 9]        # Immobilier, Infrastructure, PE
+    ALTERNATIVE_INDICES = [7, 8, 9, 10]    # Immobilier, Infrastructure, PE, Rendement absolu
     PE_INDEX = [9]                          # Capital investissement
-    COMMODITY_INDEX = [10]                  # Matieres premieres
-    CASH_INDEX = [11]                       # Encaisse
+    ABSOLUTE_RETURN_INDEX = [10]            # Rendement absolu
+    COMMODITY_INDEX = [11]                  # Matieres premieres
+    CASH_INDEX = [12]                       # Encaisse
     DOMESTIC_INDICES = [0, 4, 5, 6]        # Actions CDN + Obligations CDN
     FOREIGN_INDICES = [1, 2, 3]            # Actions internationales
 
@@ -168,7 +169,7 @@ class PortableAlphaRegulations:
 
     # Actifs eligibles a la vente a decouvert
     # Seuls les actifs liquides (score >= 0.75) sont eligibles
-    SHORT_ELIGIBLE_INDICES = [0, 1, 2, 3, 4, 5, 6, 10]  # Equities + Bonds + Commodities
+    SHORT_ELIGIBLE_INDICES = [0, 1, 2, 3, 4, 5, 6, 11]  # Equities + Bonds + Commodities
 
     @classmethod
     def get_leverage_group_constraints(cls) -> List[GroupConstraint]:

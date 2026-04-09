@@ -20,6 +20,7 @@ class AssetClass(Enum):
     IMMOBILIER = "immobilier"
     INFRASTRUCTURE = "infrastructure"
     CAPITAL_INVESTISSEMENT = "capital_investissement"
+    RENDEMENT_ABSOLU = "rendement_absolu"
     MATIERES_PREMIERES = "matieres_premieres"
     ENCAISSE = "encaisse"
 
@@ -43,8 +44,8 @@ ASSET_CLASSES_ORDER = [
     AssetClass.ACTIONS_EMERGENTES, AssetClass.OBLIGATIONS_GOV_CDN,
     AssetClass.OBLIGATIONS_CORP, AssetClass.OBLIGATIONS_INFLATION,
     AssetClass.IMMOBILIER, AssetClass.INFRASTRUCTURE,
-    AssetClass.CAPITAL_INVESTISSEMENT, AssetClass.MATIERES_PREMIERES,
-    AssetClass.ENCAISSE,
+    AssetClass.CAPITAL_INVESTISSEMENT, AssetClass.RENDEMENT_ABSOLU,
+    AssetClass.MATIERES_PREMIERES, AssetClass.ENCAISSE,
 ]
 
 ASSET_DEFAULTS: Dict[AssetClass, AssetClassConfig] = {
@@ -58,27 +59,30 @@ ASSET_DEFAULTS: Dict[AssetClass, AssetClassConfig] = {
     AssetClass.IMMOBILIER: AssetClassConfig(AssetClass.IMMOBILIER, "Immobilier", 0.070, 0.12, 0.30, 60.0, 0.00, 0.15, True),
     AssetClass.INFRASTRUCTURE: AssetClassConfig(AssetClass.INFRASTRUCTURE, "Infrastructure", 0.075, 0.10, 0.25, 70.0, 0.00, 0.15, True),
     AssetClass.CAPITAL_INVESTISSEMENT: AssetClassConfig(AssetClass.CAPITAL_INVESTISSEMENT, "Capital investissement", 0.100, 0.20, 0.10, 50.0, 0.00, 0.15, True),
+    AssetClass.RENDEMENT_ABSOLU: AssetClassConfig(AssetClass.RENDEMENT_ABSOLU, "Rendement absolu", 0.055, 0.08, 0.50, 50.0, 0.00, 0.15, True),
     AssetClass.MATIERES_PREMIERES: AssetClassConfig(AssetClass.MATIERES_PREMIERES, "Matieres premieres", 0.040, 0.18, 0.80, 35.0, 0.00, 0.10, False),
     AssetClass.ENCAISSE: AssetClassConfig(AssetClass.ENCAISSE, "Encaisse", 0.025, 0.01, 1.00, 75.0, 0.02, 0.10, False, 0.25),
 }
 
 DEFAULT_CORRELATION_MATRIX = np.array([
-    [ 1.00, 0.75, 0.70, 0.60,-0.15, 0.10,-0.05, 0.35, 0.30, 0.55, 0.30, 0.00],
-    [ 0.75, 1.00, 0.80, 0.65,-0.20, 0.05,-0.10, 0.30, 0.25, 0.60, 0.25, 0.00],
-    [ 0.70, 0.80, 1.00, 0.70,-0.10, 0.08,-0.05, 0.30, 0.28, 0.55, 0.28, 0.00],
-    [ 0.60, 0.65, 0.70, 1.00,-0.05, 0.10, 0.00, 0.25, 0.22, 0.50, 0.35, 0.00],
-    [-0.15,-0.20,-0.10,-0.05, 1.00, 0.60, 0.70,-0.05, 0.05,-0.15,-0.10, 0.10],
-    [ 0.10, 0.05, 0.08, 0.10, 0.60, 1.00, 0.50, 0.15, 0.15, 0.05, 0.05, 0.05],
-    [-0.05,-0.10,-0.05, 0.00, 0.70, 0.50, 1.00, 0.10, 0.12,-0.10, 0.35, 0.05],
-    [ 0.35, 0.30, 0.30, 0.25,-0.05, 0.15, 0.10, 1.00, 0.45, 0.40, 0.15, 0.00],
-    [ 0.30, 0.25, 0.28, 0.22, 0.05, 0.15, 0.12, 0.45, 1.00, 0.35, 0.20, 0.00],
-    [ 0.55, 0.60, 0.55, 0.50,-0.15, 0.05,-0.10, 0.40, 0.35, 1.00, 0.20, 0.00],
-    [ 0.30, 0.25, 0.28, 0.35,-0.10, 0.05, 0.35, 0.15, 0.20, 0.20, 1.00, 0.00],
-    [ 0.00, 0.00, 0.00, 0.00, 0.10, 0.05, 0.05, 0.00, 0.00, 0.00, 0.00, 1.00],
+    #  CDN   US   EAFE  EM   GovB CorpB InflB Immo Infra  PE   RA  Comm  Cash
+    [ 1.00, 0.75, 0.70, 0.60,-0.15, 0.10,-0.05, 0.35, 0.30, 0.55, 0.30, 0.30, 0.00],
+    [ 0.75, 1.00, 0.80, 0.65,-0.20, 0.05,-0.10, 0.30, 0.25, 0.60, 0.35, 0.25, 0.00],
+    [ 0.70, 0.80, 1.00, 0.70,-0.10, 0.08,-0.05, 0.30, 0.28, 0.55, 0.30, 0.28, 0.00],
+    [ 0.60, 0.65, 0.70, 1.00,-0.05, 0.10, 0.00, 0.25, 0.22, 0.50, 0.25, 0.35, 0.00],
+    [-0.15,-0.20,-0.10,-0.05, 1.00, 0.60, 0.70,-0.05, 0.05,-0.15, 0.10,-0.10, 0.10],
+    [ 0.10, 0.05, 0.08, 0.10, 0.60, 1.00, 0.50, 0.15, 0.15, 0.05, 0.15, 0.05, 0.05],
+    [-0.05,-0.10,-0.05, 0.00, 0.70, 0.50, 1.00, 0.10, 0.12,-0.10, 0.05, 0.35, 0.05],
+    [ 0.35, 0.30, 0.30, 0.25,-0.05, 0.15, 0.10, 1.00, 0.45, 0.40, 0.25, 0.15, 0.00],
+    [ 0.30, 0.25, 0.28, 0.22, 0.05, 0.15, 0.12, 0.45, 1.00, 0.35, 0.20, 0.20, 0.00],
+    [ 0.55, 0.60, 0.55, 0.50,-0.15, 0.05,-0.10, 0.40, 0.35, 1.00, 0.30, 0.20, 0.00],
+    [ 0.30, 0.35, 0.30, 0.25, 0.10, 0.15, 0.05, 0.25, 0.20, 0.30, 1.00, 0.15, 0.05],
+    [ 0.30, 0.25, 0.28, 0.35,-0.10, 0.05, 0.35, 0.15, 0.20, 0.20, 0.15, 1.00, 0.00],
+    [ 0.00, 0.00, 0.00, 0.00, 0.10, 0.05, 0.05, 0.00, 0.00, 0.00, 0.05, 0.00, 1.00],
 ])
 
 DEFAULT_CURRENT_WEIGHTS = np.array([
-    0.12, 0.15, 0.08, 0.05, 0.20, 0.10, 0.05, 0.08, 0.07, 0.05, 0.03, 0.02,
+    0.12, 0.14, 0.08, 0.05, 0.19, 0.10, 0.05, 0.07, 0.07, 0.05, 0.03, 0.03, 0.02,
 ])
 
 
@@ -164,7 +168,7 @@ BENCHMARK_PORTFOLIOS = {
     "60_40_equilibre": {
         "nom_fr": "60/40 Equilibre",
         "weights": np.array([0.10, 0.15, 0.08, 0.07, 0.25, 0.15, 0.05,
-                             0.05, 0.05, 0.03, 0.02, 0.00]),
+                             0.05, 0.05, 0.03, 0.00, 0.02, 0.00]),
     },
     "politique_placement": {
         "nom_fr": "Politique de placement actuelle",
@@ -173,15 +177,15 @@ BENCHMARK_PORTFOLIOS = {
     "obligations_pures": {
         "nom_fr": "Obligations pures (LDI)",
         "weights": np.array([0.00, 0.00, 0.00, 0.00, 0.40, 0.30, 0.25,
-                             0.00, 0.00, 0.00, 0.00, 0.05]),
+                             0.00, 0.00, 0.00, 0.00, 0.00, 0.05]),
     },
     "croissance_70_30": {
         "nom_fr": "Croissance (70/30)",
         "weights": np.array([0.15, 0.20, 0.10, 0.10, 0.15, 0.10, 0.05,
-                             0.05, 0.05, 0.03, 0.02, 0.00]),
+                             0.05, 0.05, 0.03, 0.00, 0.02, 0.00]),
     },
 }
 
 # Actifs eligibles a la vente a decouvert (liquides uniquement)
 # Indices : 0-3 equities, 4-6 obligations, 10 matieres premieres
-ALPHA_ELIGIBLE_SHORT = [0, 1, 2, 3, 4, 5, 6, 10]
+ALPHA_ELIGIBLE_SHORT = [0, 1, 2, 3, 4, 5, 6, 11]
