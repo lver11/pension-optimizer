@@ -100,34 +100,13 @@ def main():
 
         st.markdown("---")
 
-        # Source de donnees
-        st.markdown("### Source de donnees")
-        data_source = st.radio(
-            "Donnees",
-            ["Simulees", "Importees"],
-            label_visibility="collapsed",
-        )
-
-        if data_source == "Simulees":
-            seed = st.number_input("Graine aleatoire", 1, 99999, 42)
-            n_years = st.slider("Historique (annees)", 5, 30, 20)
-
-            if st.button("Regenerer les donnees"):
-                from data.generator import MarketDataGenerator
-                from config import DEFAULT_CURRENT_WEIGHTS
-                generator = MarketDataGenerator(seed=seed)
-                st.session_state.returns_data = generator.generate_returns(
-                    n_years=n_years, frequency="monthly",
-                )
-                st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-                st.success("Donnees regenerees!")
-
     # Navigation multi-pages (chemins absolus pour eviter les problemes de CWD)
     pages_dir = os.path.join(ROOT_DIR, "pages")
 
     pages = {
         "Vue d'ensemble": [
             st.Page(os.path.join(pages_dir, "page_dashboard.py"), title="Tableau de bord", icon=":material/dashboard:"),
+            st.Page(os.path.join(pages_dir, "page_data_source.py"), title="Source de donnees", icon=":material/database:"),
         ],
         "Optimisation": [
             st.Page(os.path.join(pages_dir, "page_optimization.py"), title="Moteur d'optimisation", icon=":material/tune:"),
