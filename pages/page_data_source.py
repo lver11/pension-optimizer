@@ -53,7 +53,7 @@ def render():
             "Rendement (%)": "{:.1f}",
             "Volatilite (%)": "{:.1f}",
             "Ratio de Sharpe": "{:.2f}",
-        }).background_gradient(subset=["Ratio de Sharpe"], cmap="RdYlGn"),
+        }),
         use_container_width=True,
         hide_index=True,
     )
