@@ -23,7 +23,51 @@ def render():
 
     asset_names = get_asset_names_fr()
     n_assets = len(asset_names)
-    current_weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+    current_weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS).copy()
+
+    # ---------- Portefeuille actuel ----------
+    st.markdown("### Portefeuille actuel")
+    st.caption("Modifiez les poids du portefeuille de depart. Le total doit etre egal a 100%.")
+
+    edited_weights = np.zeros(n_assets)
+
+    # En-tete
+    hdr1, hdr2 = st.columns([3, 2])
+    hdr1.markdown("**Classe d'actifs**")
+    hdr2.markdown("**Poids (%)**")
+
+    for i in range(n_assets):
+        col_name, col_weight = st.columns([3, 2])
+        col_name.markdown(f"{asset_names[i]}")
+        edited_weights[i] = col_weight.number_input(
+            f"Poids {asset_names[i]}", 0.0, 100.0,
+            float(current_weights[i] * 100), 0.5,
+            key=f"pw_{i}", label_visibility="collapsed",
+        ) / 100.0
+
+    total = edited_weights.sum()
+    col_total, col_actions = st.columns([3, 2])
+    if abs(total - 1.0) < 1e-6:
+        col_total.success(f"Total: {total:.1%}")
+    else:
+        col_total.warning(f"Total: {total:.1%} (doit etre 100%)")
+
+    btn1, btn2, btn3 = col_actions.columns(3)
+    if btn1.button("Normaliser", help="Ajuster proportionnellement pour atteindre 100%"):
+        if total > 0:
+            edited_weights = edited_weights / total
+            st.session_state.current_weights = edited_weights
+            st.rerun()
+    if btn2.button("Appliquer", type="primary", help="Sauvegarder les poids tels quels"):
+        st.session_state.current_weights = edited_weights
+        st.rerun()
+    if btn3.button("Reset", help="Revenir aux poids par defaut"):
+        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
+        st.rerun()
+
+    current_weights = edited_weights
+
+    st.divider()
 
     # ---------- Bornes par classe d'actifs ----------
     st.markdown("### Bornes par classe d'actifs")
