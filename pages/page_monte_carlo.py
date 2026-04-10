@@ -1,10 +1,11 @@
 """
-Simulation Monte Carlo pour les projections du fonds de pension.
+Simulation Monte Carlo pour les projections du portefeuille.
 """
 
 import streamlit as st
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -40,28 +41,21 @@ def render():
         )
     with col2:
         initial_assets = st.number_input(
-            "Valeur initiale de l'actif (M$)",
+            "Valeur initiale du portefeuille (M$)",
             100.0, 10000.0, config.valeur_actif / 1e6, 50.0,
         ) * 1e6
-        initial_liabilities = st.number_input(
-            "Valeur initiale du passif (M$)",
-            100.0, 10000.0, config.valeur_passif / 1e6, 50.0,
+        annual_contribution = st.number_input(
+            "Cotisations annuelles (M$)", 0.0, 500.0, 40.0, 5.0,
         ) * 1e6
 
     col1, col2 = st.columns(2)
     with col1:
-        annual_contribution = st.number_input(
-            "Cotisations annuelles (M$)", 0.0, 500.0, 40.0, 5.0,
-        ) * 1e6
-        benefit_growth = st.slider(
-            "Croissance des prestations (%)", 0.0, 8.0, 3.0, 0.5,
-        ) / 100
-    with col2:
         annual_benefit = st.number_input(
-            "Prestations annuelles (M$)", 0.0, 500.0, 57.0, 5.0,
+            "Retraits annuels (M$)", 0.0, 500.0, 57.0, 5.0,
         ) * 1e6
-        liability_growth = st.slider(
-            "Croissance du passif (%)", 0.0, 10.0, 5.0, 0.5,
+    with col2:
+        benefit_growth = st.slider(
+            "Croissance des retraits (%)", 0.0, 8.0, 3.0, 0.5,
         ) / 100
 
     # Lancer la simulation
@@ -74,10 +68,8 @@ def render():
             expected_returns=mu,
             cov_matrix=cov,
             initial_assets=initial_assets,
-            initial_liabilities=initial_liabilities,
             annual_contribution=annual_contribution,
             annual_benefit=annual_benefit,
-            liability_growth_rate=liability_growth,
             benefit_growth_rate=benefit_growth,
             n_simulations=n_sims,
             seed=42,
@@ -97,62 +89,47 @@ def render():
         # KPIs
         st.markdown("### Statistiques sommaires")
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Ratio capit. median (fin)", f"{stats['median_fr']:.1%}")
-        col2.metric("Prob. sous-capitalisation", f"{stats['prob_underfunded']:.1%}")
-        col3.metric("Valeur mediane actif (fin)", f"{stats['median_assets']/1e9:.2f} G$")
-        col4.metric("Prob. ratio < 80%", f"{stats['prob_severely_underfunded']:.1%}")
+        col1.metric("Valeur mediane (fin)", f"{stats['median_assets']/1e9:.2f} G$")
+        col2.metric("Rendement annuel median", f"{stats['median_annual_return']:.1%}")
+        col3.metric("Prob. de perte", f"{stats['prob_loss']:.1%}")
+        col4.metric("Prob. de ruine", f"{stats['prob_ruin']:.1%}")
 
         col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Ratio capit. (5e perc.)", f"{stats['p5_fr']:.1%}")
-        col2.metric("Ratio capit. (95e perc.)", f"{stats['p95_fr']:.1%}")
-        col3.metric("Actif (5e perc.)", f"{stats['p5_assets']/1e9:.2f} G$")
-        col4.metric("Surplus VaR 5%", f"{stats['surplus_var_5']/1e6:,.0f} M$")
+        col1.metric("Valeur (5e perc.)", f"{stats['p5_assets']/1e9:.2f} G$")
+        col2.metric("Valeur (95e perc.)", f"{stats['p95_assets']/1e9:.2f} G$")
+        col3.metric("Valeur moyenne (fin)", f"{stats['mean_assets']/1e9:.2f} G$")
+        col4.metric("Simulations", f"{mc.n_simulations:,}")
 
         st.divider()
 
         # Graphique actifs
-        st.markdown("### Projection de la valeur de l'actif")
+        st.markdown("### Projection de la valeur du portefeuille")
         asset_fan = mc.get_fan_data(mc.asset_paths)
         fig_assets = ChartBuilder.monte_carlo_fan_chart(
             asset_fan, mc.years,
-            title="Projection de la valeur de l'actif",
+            title="Projection de la valeur du portefeuille",
             y_label="Valeur (M$)",
             scale=1e6,
         )
-        # Ajouter la ligne du passif
-        liability_median = np.median(mc.liability_paths, axis=0)
-        import plotly.graph_objects as go
-        fig_assets.add_trace(go.Scatter(
-            x=mc.years, y=liability_median / 1e6,
-            mode="lines", name="Passif (mediane)",
-            line=dict(color="red", width=2, dash="dash"),
-        ))
         st.plotly_chart(fig_assets, use_container_width=True)
 
-        # Graphique ratio de capitalisation
-        st.markdown("### Projection du ratio de capitalisation")
-        fr_fan = mc.get_fan_data(mc.funded_ratio_paths)
-        fig_fr = ChartBuilder.funded_ratio_projection(fr_fan, mc.years)
-        st.plotly_chart(fig_fr, use_container_width=True)
-
-        # Distribution terminale du ratio de capitalisation
-        st.markdown("### Distribution du ratio de capitalisation terminal")
-        terminal_fr = mc.funded_ratio_paths[:, -1]
-        import plotly.graph_objects as go
+        # Distribution terminale
+        st.markdown("### Distribution de la valeur terminale")
+        terminal_assets = mc.asset_paths[:, -1] / 1e9
         fig_dist = go.Figure()
         fig_dist.add_trace(go.Histogram(
-            x=terminal_fr * 100,
+            x=terminal_assets,
             nbinsx=50,
             marker_color="rgba(31, 119, 180, 0.7)",
             name="Distribution",
         ))
-        fig_dist.add_vline(x=100, line_dash="dash", line_color="red",
-                           annotation_text="100% capitalisation")
-        fig_dist.add_vline(x=80, line_dash="dash", line_color="orange",
-                           annotation_text="80% seuil critique")
+        fig_dist.add_vline(
+            x=initial_assets / 1e9, line_dash="dash", line_color="red",
+            annotation_text="Valeur initiale",
+        )
         fig_dist.update_layout(
-            title="Distribution du ratio de capitalisation a l'horizon",
-            xaxis_title="Ratio de capitalisation (%)",
+            title="Distribution de la valeur du portefeuille a l'horizon",
+            xaxis_title="Valeur (G$)",
             yaxis_title="Frequence",
             height=400,
         )
@@ -168,32 +145,33 @@ def render():
                 cov = get_covariance_matrix()
                 sim_opt = MonteCarloSimulator(
                     opt_result.weights, mu, cov,
-                    initial_assets, initial_liabilities,
-                    annual_contribution, annual_benefit,
-                    liability_growth, benefit_growth,
-                    n_sims, seed=123,
+                    initial_assets=initial_assets,
+                    annual_contribution=annual_contribution,
+                    annual_benefit=annual_benefit,
+                    benefit_growth_rate=benefit_growth,
+                    n_simulations=n_sims, seed=123,
                 )
                 mc_opt = sim_opt.simulate(mc.horizon_years)
                 stats_opt = mc_opt.compute_statistics()
 
                 comp_df = pd.DataFrame({
                     "Metrique": [
-                        "Ratio capit. median",
-                        "Prob. sous-capitalisation",
-                        "Valeur mediane actif (G$)",
-                        "Ratio capit. 5e perc.",
+                        "Valeur mediane (G$)",
+                        "Rendement annuel median",
+                        "Prob. de perte",
+                        "Valeur 5e perc. (G$)",
                     ],
                     "Allocation actuelle": [
-                        f"{stats['median_fr']:.1%}",
-                        f"{stats['prob_underfunded']:.1%}",
                         f"{stats['median_assets']/1e9:.2f}",
-                        f"{stats['p5_fr']:.1%}",
+                        f"{stats['median_annual_return']:.1%}",
+                        f"{stats['prob_loss']:.1%}",
+                        f"{stats['p5_assets']/1e9:.2f}",
                     ],
                     "Allocation optimisee": [
-                        f"{stats_opt['median_fr']:.1%}",
-                        f"{stats_opt['prob_underfunded']:.1%}",
                         f"{stats_opt['median_assets']/1e9:.2f}",
-                        f"{stats_opt['p5_fr']:.1%}",
+                        f"{stats_opt['median_annual_return']:.1%}",
+                        f"{stats_opt['prob_loss']:.1%}",
+                        f"{stats_opt['p5_assets']/1e9:.2f}",
                     ],
                 })
                 st.dataframe(comp_df, use_container_width=True, hide_index=True)

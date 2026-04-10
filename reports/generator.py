@@ -92,8 +92,6 @@ class ReportGenerator:
                 "Date du rapport",
                 "Nom du fonds",
                 "Valeur de l'actif",
-                "Valeur du passif",
-                "Ratio de capitalisation",
                 "Rendement attendu (annuel)",
                 "Volatilite (annuelle)",
                 "Ratio de Sharpe",
@@ -105,8 +103,6 @@ class ReportGenerator:
                 datetime.now().strftime("%Y-%m-%d"),
                 self.config.nom,
                 f"{self.config.valeur_actif:,.0f} $",
-                f"{self.config.valeur_passif:,.0f} $",
-                f"{self.config.valeur_actif / self.config.valeur_passif:.1%}",
                 f"{metrics.get('Rendement annualise', 0):.2%}",
                 f"{metrics.get('Volatilite annualisee', 0):.2%}",
                 f"{metrics.get('Ratio de Sharpe', 0):.3f}",
@@ -135,15 +131,15 @@ class ReportGenerator:
         if mc_stats is not None:
             summary_data["Metrique"].extend([
                 "", "--- MONTE CARLO ---",
-                "Ratio capit. median (terminal)",
-                "Prob. sous-capitalisation",
                 "Valeur mediane actif (terminal)",
+                "Rendement annuel median",
+                "Prob. de perte",
             ])
             summary_data["Valeur"].extend([
                 "", "",
-                f"{mc_stats.get('median_fr', 0):.1%}",
-                f"{mc_stats.get('prob_underfunded', 0):.1%}",
                 f"{mc_stats.get('median_assets', 0):,.0f} $",
+                f"{mc_stats.get('median_annual_return', 0):.1%}",
+                f"{mc_stats.get('prob_loss', 0):.1%}",
             ])
 
         df = pd.DataFrame(summary_data)

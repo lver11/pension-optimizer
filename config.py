@@ -92,8 +92,6 @@ class PensionFundConfig:
     horizon_annees: int = 20
     taux_actualisation: float = 0.05
     valeur_actif: float = 1_000_000_000.0
-    valeur_passif: float = 950_000_000.0
-    taux_cotisation: float = 0.108
     taux_inflation_cible: float = 0.02
     niveau_confiance_var: float = 0.95
     niveau_confiance_cvar: float = 0.95
@@ -110,7 +108,6 @@ LABELS_FR = {
     "efficient_frontier": "Frontiere efficiente",
     "monte_carlo": "Simulation Monte Carlo",
     "rebalancing": "Reequilibrage",
-    "alm": "Gestion actif-passif",
     "reports": "Rapports",
     "portable_alpha": "Alpha portable",
     "beta_portfolio": "Portefeuille beta",

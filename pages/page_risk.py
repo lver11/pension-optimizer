@@ -117,20 +117,6 @@ def render():
             "Contribution (%)": "{:+.2f}",
         }), use_container_width=True, hide_index=True)
 
-        # Impact sur le ratio de capitalisation
-        st.markdown("### Impact sur le ratio de capitalisation")
-        fr_results = stress_tester.stress_funded_ratio(
-            weights, config.valeur_actif, config.valeur_passif,
-        )
-        st.dataframe(fr_results.style.format({
-            "Impact actif (%)": "{:+.2f}",
-            "Nouvel actif (M$)": "{:,.0f}",
-            "Nouveau passif (M$)": "{:,.0f}",
-            "Ratio capit. actuel": "{:.2%}",
-            "Ratio capit. stresse": "{:.2%}",
-            "Variation ratio": "{:+.2f} pp",
-        }), use_container_width=True, hide_index=True)
-
     with tab3:
         st.markdown("### Test de tension parametrique")
         st.caption("Definissez vos propres chocs de marche.")

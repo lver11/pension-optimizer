@@ -72,11 +72,6 @@ def main():
             100.0, 50000.0, config.valeur_actif / 1e6, 50.0,
         ) * 1e6
 
-        config.valeur_passif = st.number_input(
-            "Valeur du passif (M$)",
-            100.0, 50000.0, config.valeur_passif / 1e6, 50.0,
-        ) * 1e6
-
         config.taux_sans_risque = st.slider(
             "Taux sans risque (%)", 0.0, 8.0,
             config.taux_sans_risque * 100, 0.1,
@@ -87,16 +82,6 @@ def main():
         )
 
         st.session_state.pension_config = config
-
-        # Indicateur ratio de capitalisation
-        fr = config.valeur_actif / config.valeur_passif
-        st.markdown("---")
-        if fr >= 1.0:
-            st.success(f"Ratio de capitalisation: **{fr:.1%}**")
-        elif fr >= 0.85:
-            st.warning(f"Ratio de capitalisation: **{fr:.1%}**")
-        else:
-            st.error(f"Ratio de capitalisation: **{fr:.1%}**")
 
         st.markdown("---")
 
@@ -122,7 +107,6 @@ def main():
         ],
         "Gestion": [
             st.Page(os.path.join(pages_dir, "page_rebalancing.py"), title="Reequilibrage", icon=":material/sync:"),
-            st.Page(os.path.join(pages_dir, "page_alm.py"), title="Gestion actif-passif", icon=":material/balance:"),
             st.Page(os.path.join(pages_dir, "page_reports.py"), title="Rapports", icon=":material/description:"),
         ],
         "Aide": [

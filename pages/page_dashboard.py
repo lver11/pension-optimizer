@@ -42,14 +42,7 @@ def render():
     st.markdown("### Indicateurs cles de performance")
     col1, col2, col3, col4, col5 = st.columns(5)
 
-    # Ratio de capitalisation
-    fr = config.valeur_actif / config.valeur_passif
-    col1.metric(
-        "Ratio de capitalisation",
-        f"{fr:.1%}",
-        delta=f"{'Excedentaire' if fr >= 1.0 else 'Deficitaire'}",
-        delta_color="normal" if fr >= 1.0 else "inverse",
-    )
+    col1.metric("Valeur de l'actif", f"{config.valeur_actif/1e6:,.0f} M$")
     col2.metric(
         "Rendement attendu",
         f"{metrics.get('Rendement annualise', 0):.2%}",
@@ -68,13 +61,11 @@ def render():
     )
 
     # Deuxieme ligne de KPIs
-    col1, col2, col3, col4, col5 = st.columns(5)
-    col1.metric("Valeur de l'actif", f"{config.valeur_actif/1e6:,.0f} M$")
-    col2.metric("Valeur du passif", f"{config.valeur_passif/1e6:,.0f} M$")
-    surplus = config.valeur_actif - config.valeur_passif
-    col3.metric("Surplus (deficit)", f"{surplus/1e6:,.0f} M$")
-    col4.metric("CVaR (95%)", f"{metrics.get('CVaR', 0):.2%}")
-    col5.metric("Perte maximale", f"{metrics.get('Perte maximale', 0):.2%}")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("CVaR (95%)", f"{metrics.get('CVaR', 0):.2%}")
+    col2.metric("Perte maximale", f"{metrics.get('Perte maximale', 0):.2%}")
+    col3.metric("Horizon", f"{config.horizon_annees} ans")
+    col4.metric("Taux sans risque", f"{config.taux_sans_risque:.1%}")
 
     st.divider()
 
