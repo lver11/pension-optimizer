@@ -34,9 +34,20 @@ def render():
     returns_data = st.session_state.returns_data
     config = st.session_state.get("pension_config", PensionFundConfig())
 
-    # Rendements du portefeuille
+    # Metriques du portefeuille (source: hypotheses de config)
+    mu = get_expected_returns()
+    cov = get_covariance_matrix()
+    port_ret = float(weights @ mu)
+    port_vol = float(np.sqrt(weights @ cov @ weights))
+    port_sharpe = (port_ret - config.taux_sans_risque) / port_vol if port_vol > 1e-10 else 0.0
+
+    # Metriques historiques (VaR, CVaR, MDD) basees sur les donnees simulees
     portfolio_returns = returns_data.values @ weights
     metrics = RiskMetrics.compute_all(portfolio_returns, config.taux_sans_risque)
+    # Remplacer rendement/vol/sharpe par les valeurs theoriques pour coherence
+    metrics["Rendement annualise"] = port_ret
+    metrics["Volatilite annualisee"] = port_vol
+    metrics["Ratio de Sharpe"] = port_sharpe
 
     # --- KPIs principaux ---
     st.markdown("### Indicateurs cles de performance")

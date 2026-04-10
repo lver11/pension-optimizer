@@ -53,15 +53,18 @@ def render():
         ])
 
     with col2:
-        cov_method = st.selectbox("Estimation de covariance", [
-            "Ledoit-Wolf", "Echantillon", "EWMA",
+        cov_source = st.selectbox("Matrice de covariance", [
+            "Hypotheses (config)", "Ledoit-Wolf", "Echantillon", "EWMA",
         ])
 
     with col3:
         apply_constraints = st.checkbox("Appliquer les contraintes", True)
 
-    method_map = {"Ledoit-Wolf": "ledoit_wolf", "Echantillon": "sample", "EWMA": "ewma"}
-    cov_matrix = CovarianceEstimator.estimate(returns_data, method_map[cov_method])
+    if cov_source == "Hypotheses (config)":
+        cov_matrix = get_covariance_matrix()
+    else:
+        method_map = {"Ledoit-Wolf": "ledoit_wolf", "Echantillon": "sample", "EWMA": "ewma"}
+        cov_matrix = CovarianceEstimator.estimate(returns_data, method_map[cov_source])
 
     mu = get_expected_returns()
     rf = config.taux_sans_risque
