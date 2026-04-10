@@ -14,7 +14,6 @@ from config import (
     ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
 from constraints.manager import ConstraintManager, ConstraintSet, GroupConstraint
-from constraints.regulatory import QuebecPensionRegulations
 from constraints.esg import ESGConstraintEngine
 
 
@@ -111,21 +110,6 @@ def render():
 
     st.divider()
 
-    # ---------- Contraintes reglementaires ----------
-    st.markdown("### Contraintes reglementaires")
-    apply_regulatory = st.checkbox("Appliquer les contraintes reglementaires du Quebec", True)
-    if apply_regulatory:
-        st.info("""
-        **Contraintes reglementaires actives:**
-        - Actions totales <= 70%
-        - Capital investissement <= 20%
-        - Actifs alternatifs (PE + Infra + Immobilier) <= 40%
-        - Liquidite minimum >= 2%
-        - Obligations totales >= 10%
-        """)
-
-    st.divider()
-
     # ---------- Contraintes ESG ----------
     st.markdown("### Contraintes ESG")
     apply_esg = st.checkbox("Appliquer les contraintes ESG", True)
@@ -180,14 +164,6 @@ def render():
 
         cm = ConstraintManager(n_assets, asset_names)
         is_valid, violations = cm.validate_allocation(current_weights, constraint_set)
-
-        if apply_regulatory:
-            reg_valid, reg_violations = QuebecPensionRegulations.validate_compliance(
-                current_weights, asset_names
-            )
-            if not reg_valid:
-                violations.extend(reg_violations)
-                is_valid = False
 
         st.session_state.constraint_set = constraint_set
 

@@ -15,7 +15,6 @@ from config import (
 from data.generator import MarketDataGenerator
 from models.efficient_frontier import EfficientFrontierComputer
 from constraints.manager import ConstraintSet
-from constraints.regulatory import QuebecPensionRegulations
 from risk.covariance import CovarianceEstimator
 from visualization.charts import ChartBuilder
 
@@ -50,21 +49,20 @@ def render():
     with col2:
         n_points = st.slider("Nombre de points", 20, 100, 50)
     with col3:
-        apply_constraints = st.checkbox("Contraintes reglementaires", True)
+        apply_constraints = st.checkbox("Appliquer les contraintes", True)
 
     show_current = st.checkbox("Afficher le portefeuille actuel", True)
     show_tangency = st.checkbox("Afficher le portefeuille tangent", True)
     show_unconstrained = st.checkbox("Afficher la frontiere non contrainte", False)
     show_cml = st.checkbox("Afficher la ligne du marche des capitaux", True)
 
-    # Contraintes
+    # Contraintes (depuis le gestionnaire ou bornes par defaut)
     constraint_set = None
     if apply_constraints:
-        constraint_set = ConstraintSet(
+        constraint_set = st.session_state.get("constraint_set", ConstraintSet(
             min_weights=get_min_weights(),
             max_weights=get_max_weights(),
-            group_constraints=QuebecPensionRegulations.get_group_constraints(),
-        )
+        ))
 
     # Calcul
     if st.button("Calculer la frontiere", type="primary", use_container_width=True):

@@ -21,7 +21,6 @@ from models.risk_parity import RiskParityOptimizer
 from models.cvar_optimizer import CVaROptimizer
 from risk.covariance import CovarianceEstimator
 from constraints.manager import ConstraintSet
-from constraints.regulatory import QuebecPensionRegulations
 from visualization.charts import ChartBuilder
 
 
@@ -59,7 +58,7 @@ def render():
         ])
 
     with col3:
-        apply_constraints = st.checkbox("Contraintes reglementaires Quebec", True)
+        apply_constraints = st.checkbox("Appliquer les contraintes", True)
 
     method_map = {"Ledoit-Wolf": "ledoit_wolf", "Echantillon": "sample", "EWMA": "ewma"}
     cov_matrix = CovarianceEstimator.estimate(returns_data, method_map[cov_method])
@@ -67,14 +66,13 @@ def render():
     mu = get_expected_returns()
     rf = config.taux_sans_risque
 
-    # Contraintes
+    # Contraintes (depuis le gestionnaire ou bornes par defaut)
     constraint_set = None
     if apply_constraints:
-        constraint_set = ConstraintSet(
+        constraint_set = st.session_state.get("constraint_set", ConstraintSet(
             min_weights=get_min_weights(),
             max_weights=get_max_weights(),
-            group_constraints=QuebecPensionRegulations.get_group_constraints(),
-        )
+        ))
 
     st.divider()
 

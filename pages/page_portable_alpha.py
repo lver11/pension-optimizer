@@ -20,7 +20,7 @@ from config import (
     get_esg_scores, PensionFundConfig,
 )
 from models.portable_alpha import PortableAlphaOptimizer, PortableAlphaResult
-from constraints.regulatory import PortableAlphaRegulations, QuebecPensionRegulations
+from constraints.manager import ConstraintManager
 from visualization.charts import ChartBuilder
 
 
@@ -28,7 +28,7 @@ st.header("Alpha Portable")
 st.markdown("""
 Strategie de **separation beta/alpha** : le portefeuille beta replique passivement
 un benchmark, tandis que l'overlay alpha genere du rendement excedentaire via des
-positions long/short. Le levier est controle par les contraintes reglementaires.
+positions long/short. Le levier est controle par les parametres de la strategie.
 """)
 
 # ============================================================
@@ -170,23 +170,6 @@ if result.status == "optimal":
                f"Sharpe: {result.sharpe_ratio:.3f}")
 else:
     st.warning(f"Statut: {result.status}")
-
-# ============================================================
-# Conformite reglementaire
-# ============================================================
-st.markdown("---")
-st.subheader("Conformite reglementaire")
-
-is_compliant, violations = PortableAlphaRegulations.validate_leverage_compliance(
-    result.combined_weights, asset_names,
-)
-
-if is_compliant:
-    st.success("Le portefeuille respecte toutes les contraintes reglementaires de levier.")
-else:
-    st.error("Violations reglementaires detectees :")
-    for v in violations:
-        st.markdown(f"- {v}")
 
 # Detail des metriques de levier
 with st.expander("Detail des metriques de levier", expanded=False):
