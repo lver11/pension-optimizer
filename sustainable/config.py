@@ -4,8 +4,8 @@ Données des classes d'actifs durables.
 Source: WG_Catégories_actifs_v4.xlsx (Cartographie_complète_v1 + Anticipations + Corrélations)
 """
 
-from dataclasses import dataclass, field
-from typing import Dict, Optional
+from dataclasses import dataclass
+from typing import Dict, Optional, Tuple
 import numpy as np
 
 
@@ -119,6 +119,8 @@ DURABLE_ASSETS: Dict[str, DurableAsset] = {
         rendement=0.0793, volatilite=0.142, rendement_durable=0.065, volatilite_durable=0.14,
         has_durable_variant=True,
         score_durabilite=4.25, score_additionnalite=4, score_disponibilite=4.5, score_retombees_qc=1, score_liquidite=2,
+        # Note: admissible variant has lower durabilité/disponibilité but much higher retombées Qc (1→5),
+        # making the composite score higher. Source: Excel Cartographie_complète_v1.
         score_durabilite_durable=4.0, score_additionnalite_durable=4, score_disponibilite_durable=3.5,
         score_retombees_qc_durable=5, score_liquidite_durable=1,
     ),
@@ -192,7 +194,7 @@ _CORR = np.clip(_CORR, -1.0, 1.0)
 # Required because the source Excel matrix is not PSD due to estimation noise
 def _nearest_psd(C: np.ndarray) -> np.ndarray:
     eigvals, eigvecs = np.linalg.eigh(C)
-    eigvals = np.maximum(eigvals, 0.0)
+    eigvals = np.maximum(eigvals, 1e-8)
     C_psd = eigvecs @ np.diag(eigvals) @ eigvecs.T
     # Re-normalise to correlation matrix
     d = np.sqrt(np.diag(C_psd))
@@ -247,7 +249,7 @@ def get_score_matrix(
     dim_weights: Dict[str, float],
     use_durable: Optional[Dict[str, bool]] = None,
     custom_scores: Optional[Dict[str, Dict[str, float]]] = None,
-) -> tuple:
+) -> Tuple[np.ndarray, np.ndarray]:
     use_durable = use_durable or {}
     custom_scores = custom_scores or {}
     dims = ["durabilite", "additionnalite", "disponibilite", "retombees_qc", "liquidite"]
