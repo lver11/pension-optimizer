@@ -109,6 +109,18 @@ def main():
             st.Page(os.path.join(pages_dir, "page_rebalancing.py"), title="Reequilibrage", icon=":material/sync:"),
             st.Page(os.path.join(pages_dir, "page_reports.py"), title="Rapports", icon=":material/description:"),
         ],
+        "🌱 Optimisation durable": [
+            st.Page(os.path.join(pages_dir, "page_durable_univers.py"),
+                    title="Univers durable", icon=":material/eco:"),
+            st.Page(os.path.join(pages_dir, "page_durable_scores.py"),
+                    title="Scores de durabilité", icon=":material/star:"),
+            st.Page(os.path.join(pages_dir, "page_durable_frontier.py"),
+                    title="Frontière durable", icon=":material/scatter_plot:"),
+            st.Page(os.path.join(pages_dir, "page_durable_optimization.py"),
+                    title="Optimisation durable", icon=":material/tune:"),
+            st.Page(os.path.join(pages_dir, "page_durable_rapport.py"),
+                    title="Rapport durable", icon=":material/description:"),
+        ],
         "Aide": [
             st.Page(os.path.join(pages_dir, "page_documentation.py"), title="Documentation", icon=":material/menu_book:"),
         ],
