@@ -33,8 +33,9 @@ class DurableOptimizer(BaseOptimizer):
     Maximise: μ'w - (γ/2)·w'Σw + λ·S'w
     """
 
-    def optimize(self, **kwargs) -> DurableResult:
-        return self.optimize_durable(**kwargs)
+    def optimize(self, lam: float = 0.0, **kwargs) -> DurableResult:
+        """Délègue à optimize_durable. lam=0 correspond à l'optimisation purement financière."""
+        return self.optimize_durable(lam=lam, **kwargs)
 
     def optimize_durable(
         self,
@@ -50,7 +51,7 @@ class DurableOptimizer(BaseOptimizer):
         lam: poids de la durabilité (0 = purement financier)
         gamma: aversion au risque
         sustainability_scores: vecteur (n,) de scores composites par actif
-        use_durable_map: {asset_id: True} pour variante durable (propagé dans DurableResult)
+        use_durable_map: {asset_name: True} pour variante durable (propagé dans DurableResult)
         """
         start_time = time.time()
         w = cp.Variable(self.n_assets)
@@ -77,20 +78,24 @@ class DurableOptimizer(BaseOptimizer):
         prob = cp.Problem(objective, constraints)
         try:
             prob.solve(solver=cp.CLARABEL, verbose=False)
-        except cp.SolverError:
+        except (cp.SolverError, cp.DCPError, ValueError, Exception):
             return self._make_fallback(lam, gamma, sustainability_scores, start_time, use_durable_map)
 
         if prob.status in ("optimal", "optimal_inaccurate") and w.value is not None:
-            w_opt = np.maximum(w.value, 0)
+            w_opt = np.clip(w.value, self.min_weights, self.max_weights)
             w_opt /= w_opt.sum()
+            status = "optimal" if prob.status == "optimal" else "optimal_inaccurate"
             return self._build_durable_result(
-                w_opt, "optimal", start_time, lam, gamma, sustainability_scores, use_durable_map
+                w_opt, status, start_time, lam, gamma, sustainability_scores, use_durable_map
             )
         else:
             return self._make_fallback(lam, gamma, sustainability_scores, start_time, use_durable_map)
 
     def _make_fallback(self, lam, gamma, sustainability_scores, start_time, use_durable_map=None):
         w_eq = np.ones(self.n_assets) / self.n_assets
+        w_eq = np.clip(w_eq, self.min_weights, self.max_weights)
+        if w_eq.sum() > 1e-10:
+            w_eq /= w_eq.sum()
         return self._build_durable_result(
             w_eq, "infeasible", start_time, lam, gamma, sustainability_scores, use_durable_map
         )
@@ -102,6 +107,10 @@ class DurableOptimizer(BaseOptimizer):
         port_return, port_vol, sharpe = self._compute_portfolio_stats(weights)
         risk_contrib = self._compute_risk_contributions(weights)
         sustain_score = float(sustainability_scores @ weights)
+        sustainability_breakdown = {
+            self.asset_names[i]: float(weights[i] * sustainability_scores[i])
+            for i in range(self.n_assets)
+        }
         variant_used = {}
         if use_durable_map:
             for i, name in enumerate(self.asset_names):
@@ -114,6 +123,7 @@ class DurableOptimizer(BaseOptimizer):
             sharpe_ratio=sharpe,
             risk_contributions=risk_contrib,
             sustainability_score=sustain_score,
+            sustainability_breakdown=sustainability_breakdown,
             lambda_used=lam,
             gamma_used=gamma,
             variant_used=variant_used,
@@ -141,7 +151,7 @@ class DurableOptimizer(BaseOptimizer):
         results = []
         for lam in lambdas:
             r = self.optimize_durable(lam, gamma, sustainability_scores, constraint_set, use_durable_map)
-            if r.status == "optimal":
+            if r.status in ("optimal", "optimal_inaccurate"):
                 results.append(r)
 
         results.sort(key=lambda r: r.sustainability_score)
