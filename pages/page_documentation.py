@@ -49,8 +49,12 @@ with tab_guide:
 - [Monte Carlo](#3-6-analyse-de-risque-simulation-monte-carlo)
 - [Alpha portable](#3-7-strategies-alpha-portable)
 - [Reequilibrage](#3-8-gestion-reequilibrage)
-- [Gestion actif-passif](#3-9-gestion-gestion-actif-passif-alm)
 - [Rapports](#3-10-gestion-rapports)
+- [🌱 Univers durable](#3-11-univers-durable)
+- [🌱 Scores durabilite](#3-12-scores-de-durabilite)
+- [🌱 Frontiere Pareto](#3-13-frontiere-durable-pareto)
+- [🌱 Optimisation durable](#3-14-optimisation-durable)
+- [🌱 Rapport durable](#3-15-rapport-durable)
 - [Flux de travail](#4-flux-de-travail-recommande)
 - [Classes d'actifs](#5-classes-d-actifs-disponibles-12)
 - [Contraintes reglementaires](#6-contraintes-reglementaires-du-quebec)
@@ -81,6 +85,7 @@ with tab_lexique:
 - [K. Reequilibrage](#k-reequilibrage)
 - [L. ESG et contraintes](#l-esg-et-contraintes)
 - [M. Termes techniques](#m-termes-techniques-de-l-optimisation)
+- [N. 🌱 Optimisation durable](#n-optimisation-durable)
         """)
 
     st.markdown(lexique_md)
@@ -157,6 +162,7 @@ with tab_recherche:
         "VaR", "CVaR", "Sharpe", "Volatilite",
         "Black-Litterman", "Alpha portable", "Duration", "Monte Carlo",
         "Frontiere efficiente", "Parite de risque", "Drawdown", "Levier",
+        "Durabilite", "Additionnalite", "Pareto", "Lambda",
     ]
     for i, term in enumerate(frequent_terms):
         with cols[i % 4]:

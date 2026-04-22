@@ -52,7 +52,9 @@ La sidebar gauche est presente sur **toutes les pages**. Elle contient :
 
 ## 3. Pages de l'application
 
-L'application comporte 10 pages organisees en 5 sections.
+L'application comporte 15 pages organisees en 6 sections.
+
+> **Note navigation** : la sidebar Streamlit affiche les sections par defaut; si vous ne voyez pas la section "🌱 Optimisation durable", cliquez sur **"View more"** en bas de la liste.
 
 ---
 
@@ -357,6 +359,144 @@ L'application comporte 10 pages organisees en 5 sections.
 
 ---
 
+## 3.11-3.15 🌱 Optimisation durable
+
+Ces cinq pages forment un outil d'optimisation bi-critere **rendement/risque ↔ durabilite**. Elles s'utilisent en sequence.
+
+---
+
+### 3.11 🌱 Univers durable
+
+**Objectif** : configurer l'univers d'actifs et les preferences de durabilite avant tout calcul.
+
+**Actifs disponibles (15 classes)** :
+
+| Categorie | Actif standard | Variante durable |
+|-----------|---------------|-----------------|
+| Revenu fixe | Obligations court terme | — |
+| Revenu fixe | Obligations univers | Obligations vertes |
+| Revenu fixe | Hypotheques commerciales | Hypotheques vertes |
+| Revenu fixe | Obligations haut rendement | — |
+| Revenu fixe | Dettes emergentes | Dettes emergentes vertes |
+| Actions & liquidites | Actions canadiennes | Actions responsables CDN |
+| Actions & liquidites | Actions mondiales | Actions mondiales ESG |
+| Actions & liquidites | Actions petite cap | — |
+| Actions & liquidites | Eq. prive Quebec | — |
+| Actions & liquidites | Fonds de couverture | — |
+| Actifs prives | Dette privee | Dette privee verte |
+| Actifs prives | Immobilier prive | Immobilier vert |
+| Actifs prives | Infrastructure privee | Infrastructure verte |
+| Actifs prives | Buyout | — |
+| Actifs prives | Capital risque | Capital risque impact |
+
+**Configuration** :
+- **Checkbox** : inclure ou exclure chaque actif de l'optimisation
+- **Toggle "Variante durable"** : si disponible, utiliser la version durable de l'actif (rendement et scores differents)
+- **Pondérations des 5 dimensions** (curseurs 0-100%, normalises a 100%) :
+  - Durabilite : poids de la dimension environnementale/sociale
+  - Additionnalite : poids de la contribution incrementale du financement
+  - Disponibilite : poids de l'accessibilite du produit sur le marche
+  - Retombees Quebec : poids des benefices economiques locaux
+  - Liquidite : poids de la facilite de negociation
+- **Graphique radar** : visualisation des priorites choisies
+- **Aversion au risque γ** : controle l'agressivite de l'optimisation (defaut : 2.5)
+- **Bouton "Appliquer"** : sauvegarde la configuration (reinitialise la frontiere et les resultats)
+
+---
+
+### 3.12 🌱 Scores de durabilite
+
+**Objectif** : consulter et ajuster les scores de durabilite par classe d'actifs.
+
+**Tableau editable** :
+- Source par defaut : fichier Excel `WG_Categories_actifs_v4.xlsx` (Cartographie_complete_v1)
+- Une ligne par actif actif, 5 colonnes de scores (echelle 1.0 a 5.0, pas de 0.25)
+- La colonne **"Score composite"** est recalculee en temps reel selon les pondérations choisies dans l'Univers
+- **Graphique a barres horizontales** : rouge (< 2), orange (2-3), vert (>= 3)
+
+**Actions** :
+- **"Reinitialiser aux valeurs Excel"** : remet les scores officiels du groupe de travail
+- **"Appliquer"** : sauvegarde les scores modifies
+
+> Les scores doivent etre entre 1.0 et 5.0. Un actif avec score composite eleve sera favorise par l'optimiseur lorsque λ est grand.
+
+---
+
+### 3.13 🌱 Frontiere durable (Pareto)
+
+**Objectif** : calculer et visualiser le compromis entre performance financiere et durabilite.
+
+**Principe** : l'optimiseur fait varier le parametre λ (poids durabilite) de 0 a λ_max en 50 points. Chaque valeur de λ produit un portefeuille optimal different, formant une **frontiere Pareto** :
+
+```
+Maximiser :  μ'w  −  (γ/2) × w'Σw  +  λ × S'w
+
+Avec :  μ = rendements attendus des actifs selectionnes
+        Σ = matrice de covariance
+        S = scores composites de durabilite (ponderes par les dimensions)
+        γ = aversion au risque (definie dans l'Univers)
+        λ = poids accordé a la durabilite
+```
+
+**Graphique scatter interactif** :
+- Axe X : score de durabilite composite du portefeuille
+- Axe Y : ratio de Sharpe
+- Chaque point = un λ different (couleur Viridis, bleu = financier pur, jaune = durabilite max)
+- **Curseur λ** : selectionner un point precis sur la frontiere
+- **Metriques du point selectionne** : rendement, volatilite, Sharpe, score durabilite, λ
+
+**Actions** :
+- **"Calculer la frontiere Pareto"** : lance l'optimisation (50 points, ~2s)
+- **"Utiliser ce portefeuille"** : transfere le point selectionne vers la page Optimisation
+
+> Prerequis : avoir configure et applique l'Univers durable.
+
+---
+
+### 3.14 🌱 Optimisation durable
+
+**Objectif** : comparer le portefeuille financier pur et le portefeuille durable et adopter l'un d'eux.
+
+**Panneau de gauche** :
+- Curseur λ (pre-rempli depuis la Frontiere, ajustable manuellement)
+- Bouton "Lancer l'optimisation" : calcule deux portefeuilles en parallele
+
+**Tableau comparatif (3 colonnes)** :
+
+| Metrique | Optimal financier (λ=0) | Optimal durable (λ choisi) |
+|----------|------------------------|---------------------------|
+| Rendement attendu | ... | ... |
+| Volatilite | ... | ... |
+| Ratio de Sharpe | ... | ... |
+| Score durabilite composite | ... | ... |
+
+**3 onglets de visualisation** :
+1. **Allocations** : barres groupees cote a cote (financier vs durable)
+2. **Score par dimension** : barres horizontales groupees (Durabilite, Additionnalite, Disponibilite, Retombees QC, Liquidite)
+3. **Tableau detaille** : poids (%) pour chaque actif dans les deux portefeuilles
+
+**Action** :
+- **"Enregistrer le portefeuille durable"** : sauvegarde l'allocation pour le Rapport
+
+> Le "cout de la durabilite" est visible en comparant le Sharpe du portefeuille financier (λ=0) et du portefeuille durable. Un ecart faible signifie que la durabilite s'obtient presque gratuitement.
+
+---
+
+### 3.15 🌱 Rapport durable
+
+**Objectif** : produire un recapitulatif pour presentation au conseil ou au comite de placement.
+
+**5 sections** :
+1. **Metriques financieres** : rendement, volatilite, Sharpe, score durabilite
+2. **Score par dimension** : tableau des contributions par dimension de durabilite
+3. **Allocation detaillee** : poids de chaque actif + indicateur variante durable (✅/—)
+4. **Hypotheses** : pondérations des dimensions, γ, λ, liste des actifs actifs avec variante utilisee
+5. **Export** : bouton de telechargement CSV de l'allocation
+
+> Prerequis : avoir clique "Enregistrer le portefeuille durable" dans la page Optimisation.
+
+---
+
 ## 4. Flux de travail recommande
 
 ### Scenario typique d'une seance de travail
@@ -372,6 +512,19 @@ L'application comporte 10 pages organisees en 5 sections.
 8. ALM                 -> Verifier l'adequation actif-passif
 9. Reequilibrage       -> Planifier la transition et estimer les couts
 10. Rapports           -> Generer les documents pour le comite de placement
+```
+
+### Flux de travail - Optimisation durable
+
+```
+1. Univers durable      -> Selectionner les actifs, activer variantes durables,
+                           regler les pondérations et γ, cliquer Appliquer
+2. Scores de durabilite -> Verifier/ajuster les scores Excel, cliquer Appliquer
+3. Frontiere durable    -> Calculer la frontiere Pareto, selectionner un point λ,
+                           cliquer "Utiliser ce portefeuille"
+4. Optimisation durable -> Ajuster λ si besoin, lancer l'optimisation,
+                           comparer financier vs durable, enregistrer
+5. Rapport durable      -> Consulter le recapitulatif, exporter en CSV
 ```
 
 ### Flux decisonnel
@@ -404,6 +557,9 @@ Verifier l'ALM (actif-passif)
     |
     v
 Planifier le reequilibrage
+    |
+    v
+[Optionnel] Optimisation durable -> Frontiere Pareto -> Rapport durable
     |
     v
 Generer le rapport

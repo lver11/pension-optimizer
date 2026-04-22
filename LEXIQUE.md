@@ -504,3 +504,61 @@ Technique qui ajoute un petit terme a l'objectif pour stabiliser la solution. Pa
 
 ### PSD (Positive Semi-Definite)
 Propriete mathematique requise pour la matrice de covariance. Une matrice PSD garantit que la variance du portefeuille est toujours positive ou nulle. Si la matrice estimee n'est pas PSD, l'optimisation echoue ; l'application corrige automatiquement ce probleme via l'algorithme de Higham.
+
+---
+
+## N. Optimisation durable
+
+### Optimisation bi-critere
+Approche qui optimise simultanement deux objectifs contradictoires : ici, la performance financiere (rendement/risque) et la durabilite. Il est impossible d'etre a la fois le meilleur financierement et le plus durable — il faut choisir un compromis. L'optimisation bi-critere cartographie systematiquement tous les compromis possibles.
+
+### Frontiere Pareto (durabilite)
+Ensemble de portefeuilles tels qu'on ne peut pas ameliorer la durabilite sans degrader le ratio de Sharpe (ou vice versa). Chaque point sur cette frontiere est "Pareto-optimal" : il n'existe aucun autre portefeuille qui soit simultanement meilleur sur les deux dimensions.
+
+L'application construit cette frontiere en faisant varier le parametre λ de 0 a λ_max en 50 points, chaque valeur donnant un portefeuille optimal different.
+
+### Parametre λ (lambda)
+Le poids accorde a la durabilite dans la fonction objectif de l'optimiseur :
+
+`Maximiser : μ'w − (γ/2)·w'Σw + λ·S'w`
+
+- λ = 0 : optimisation purement financiere (equivalent Markowitz)
+- λ grand : durabilite fortement privilegiee (au detriment potentiel du Sharpe)
+- λ optimal : a choisir sur la frontiere Pareto selon la preference de l'investisseur
+
+### Score composite de durabilite
+Mesure agregee de la durabilite d'un portefeuille, calculee comme la somme ponderee des scores de chaque actif :
+
+`S_portefeuille = Σ wᵢ × [α×durabilite + β×additionnalite + γ×retombees_qc + δ×disponibilite + ε×liquidite]ᵢ`
+
+ou α+β+γ+δ+ε = 1 (pondérations definies par l'utilisateur dans la page Univers durable).
+
+### Dimensions de durabilite
+Les 5 dimensions evaluees pour chaque classe d'actifs, sur une echelle de 1 a 5 :
+
+| Dimension | Signification |
+|-----------|--------------|
+| **Durabilite** | Impact environnemental et social de l'actif (criteres ESG, emissions, gouvernance) |
+| **Additionnalite** | Contribution incrementale du financement : est-ce que le capital apporte un changement qui n'aurait pas eu lieu autrement ? |
+| **Disponibilite** | Facilite d'acces au produit sur le marche institutionnel quebecois |
+| **Retombees Quebec** | Benefices economiques et sociaux generes localement (emplois, fiscalite, ecosysteme) |
+| **Liquidite** | Facilite de vendre ou racheter la position rapidement sans impact significatif sur le prix |
+
+### Variante durable
+Version alternative d'un actif avec un meilleur profil de durabilite, generalement au prix d'un rendement attendu legerement inferieur ou d'une liquidite reduite. Exemples : obligations vertes (vs obligations univers), actions mondiales ESG (vs actions mondiales), infrastructure verte (vs infrastructure privee).
+
+L'utilisateur peut activer ou desactiver la variante durable pour chaque actif individuellement dans la page Univers durable.
+
+### Cout de la durabilite
+La reduction de ratio de Sharpe acceptee en echange d'un meilleur score de durabilite. Visible sur la frontiere Pareto : c'est la pente de la courbe. Un cout faible signifie que la durabilite s'obtient presque gratuitement pour ce portefeuille et ces contraintes particuliers.
+
+### Aversion au risque γ (gamma)
+Parametre qui controle l'arbitrage entre rendement esperé et variance dans la fonction objectif :
+
+`μ'w − (γ/2)·w'Σw`
+
+- γ faible (ex. 1.0) : l'optimiseur accepte plus de risque pour plus de rendement
+- γ eleve (ex. 5.0) : l'optimiseur penalise fortement la variance
+- γ = 2.5 (defaut) : calibrage institutionnel standard
+
+Note : dans l'optimisation durable, γ est independant du λ — ils controlent respectivement le risque financier et le poids de la durabilite.
