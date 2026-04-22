@@ -203,7 +203,7 @@ class DurableOptimizer(BaseOptimizer):
 - Si l'univers sélectionné est vide : message d'erreur explicite
 - Si l'optimisation est infaisable (contraintes trop strictes) : fallback sur portefeuille équipondéré avec avertissement
 - Si `λ_max` ne produit pas de différence visible : avertissement "Les contraintes limitent la diversification durable"
-- Scores manquants dans l'éditeur : validation avant application (0 < score ≤ 4)
+- Scores manquants dans l'éditeur : validation avant application (0 < score ≤ 5, échelle Excel)
 
 ---
 
