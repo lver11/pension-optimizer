@@ -21,6 +21,7 @@ from config import (
 )
 from models.portable_alpha import PortableAlphaOptimizer, PortableAlphaResult
 from constraints.manager import ConstraintManager
+from constraints.regulatory import PortableAlphaRegulations
 from visualization.charts import ChartBuilder
 
 
