@@ -26,7 +26,12 @@ def render():
         st.info("Lancez une optimisation dans 'Optimisation durable' d'abord.")
         return
 
-    active_ids = st.session_state.get("durable_active_ids", DURABLE_ASSET_ORDER)
+    active_ids = st.session_state.get("durable_active_ids")
+    if active_ids is None:
+        # Infer active_ids from result.weights size to avoid misalignment
+        n = len(result.weights)
+        active_ids = DURABLE_ASSET_ORDER[:n]  # best-effort fallback
+        st.warning("Configuration d'univers non trouvée — les labels peuvent être approximatifs.")
     dim_weights = st.session_state.get("durable_dim_weights", DEFAULT_DIM_WEIGHTS)
     gamma = st.session_state.get("durable_gamma", 2.5)
     lam = st.session_state.get("durable_lambda", 1.0)
@@ -128,6 +133,7 @@ def render():
             for aid in active_ids
         ],
     })
+    export_df = export_df.sort_values("Poids (%)", ascending=False)
     csv = export_df.to_csv(index=False).encode("utf-8")
     st.download_button(
         "⬇️ Télécharger l'allocation (CSV)",

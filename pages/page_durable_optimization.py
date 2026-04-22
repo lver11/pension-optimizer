@@ -116,8 +116,19 @@ def render():
         st.info("Configurez les paramètres et cliquez sur 'Lancer l'optimisation'.")
         return
 
+    if "durable_result_fin" not in st.session_state:
+        st.info("Résultat provenant de la frontière. Cliquez sur 'Lancer l'optimisation' pour obtenir la comparaison complète (financier vs durable).")
+        # Still show the durable result metrics if available
+        result = st.session_state.durable_result
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Rendement", f"{result.expected_return:.2%}")
+        col2.metric("Volatilité", f"{result.volatility:.2%}")
+        col3.metric("Sharpe", f"{result.sharpe_ratio:.3f}")
+        col4.metric("Score durabilité", f"{result.sustainability_score:.2f}")
+        return
+
     result = st.session_state.durable_result
-    result_fin = st.session_state.get("durable_result_fin", result)
+    result_fin = st.session_state.durable_result_fin
     stored_ids = st.session_state.get("durable_active_ids", active_ids)
     names = [
         DURABLE_ASSETS[aid].nom_durable

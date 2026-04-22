@@ -153,6 +153,12 @@ def render():
     if st.button("➡ Utiliser ce portefeuille dans Optimisation durable"):
         st.session_state.durable_result = selected
         st.session_state.durable_lambda = selected.lambda_used
+        # Also write active_ids so rapport page can align weights correctly
+        st.session_state.durable_active_ids = st.session_state.get(
+            "durable_frontier_active_ids", active_ids
+        )
+        # Clear fin result so optimization page knows it needs to re-run
+        st.session_state.pop("durable_result_fin", None)
         st.success(f"Portefeuille sélectionné (λ={selected.lambda_used:.2f}). Ouvrez 'Optimisation durable'.")
 
 
