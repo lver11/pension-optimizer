@@ -51,18 +51,29 @@ def render():
     if "durable_scores" not in st.session_state:
         st.session_state.durable_scores = _default_scores_df(use_durable_map)
 
+    # Re-initialize if durable variant selection has changed
+    universe_hash = str({aid: v.get("use_durable", False) for aid, v in universe.items()})
+    if st.session_state.get("_durable_scores_universe_hash") != universe_hash:
+        st.session_state.durable_scores = _default_scores_df(use_durable_map)
+        st.session_state["_durable_scores_universe_hash"] = universe_hash
+
     scores_df = st.session_state.durable_scores.copy()
     dim_cols = list(DIM_LABELS.values())
 
     st.markdown("### Scores par classe d'actifs *(éditables)*")
     edited = st.data_editor(
-        scores_df[["Classe d'actifs"] + dim_cols],
+        scores_df[["id", "Classe d'actifs"] + dim_cols],
         use_container_width=True,
         hide_index=True,
+        disabled=["id", "Classe d'actifs"],
         column_config={
-            col: st.column_config.NumberColumn(col, min_value=0.0, max_value=5.0,
-                                               format="%.1f", step=0.25)
-            for col in dim_cols
+            "id": st.column_config.TextColumn("ID", width="small"),
+            "Classe d'actifs": st.column_config.TextColumn("Classe d'actifs"),
+            **{
+                col: st.column_config.NumberColumn(col, min_value=1.0, max_value=5.0,
+                                                   format="%.1f", step=0.25)
+                for col in dim_cols
+            },
         },
     )
 
@@ -77,12 +88,15 @@ def render():
         if st.button("✅ Appliquer les scores", type="primary", use_container_width=True):
             valid = True
             for col in dim_cols:
-                if edited[col].isnull().any() or (edited[col] < 0).any() or (edited[col] > 5).any():
-                    st.error(f"Scores invalides dans '{col}': doit être entre 0 et 5.")
+                if edited[col].isnull().any() or (edited[col] < 1).any() or (edited[col] > 5).any():
+                    st.error(f"Scores invalides dans '{col}': doit être entre 1 et 5.")
                     valid = False
             if valid:
+                id_to_scores = edited.set_index("id")[dim_cols]
                 updated = scores_df.copy()
-                updated[dim_cols] = edited[dim_cols].values
+                updated = updated.set_index("id")
+                updated[dim_cols] = id_to_scores
+                updated = updated.reset_index()
                 st.session_state.durable_scores = updated
                 st.session_state.pop("durable_frontier", None)
                 st.session_state.pop("durable_result", None)

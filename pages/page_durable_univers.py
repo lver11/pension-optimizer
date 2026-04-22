@@ -112,7 +112,7 @@ def render():
         line_color="#2ca02c",
     ))
     fig_radar.update_layout(
-        polar=dict(radialaxis=dict(visible=True, range=[0, 60])),
+        polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
         height=300, margin=dict(t=20, b=20),
         showlegend=False,
     )
@@ -123,6 +123,7 @@ def render():
     gamma = st.slider(
         "Aversion au risque (γ) — plus élevé = plus conservateur",
         1.0, 6.0, st.session_state.durable_gamma, 0.1,
+        key="durable_gamma_slider",
     )
 
     st.divider()
