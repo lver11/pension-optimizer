@@ -185,8 +185,6 @@ def render():
             # Métriques des deux portefeuilles
             returns_data = st.session_state.get("returns_data")
             m_cur = compute_portfolio_metrics(current_weights, mu, cov_matrix, rf, returns_data)
-            w_for_sel = w_selected if w_selected is not None else current_weights
-            m_sel = compute_portfolio_metrics(w_for_sel, mu, cov_matrix, rf, returns_data)
 
             col_cur, col_sel = st.columns(2)
 
@@ -204,38 +202,39 @@ def render():
 
             with col_sel:
                 st.markdown("**★ Point selectionne**")
-                st.metric(
-                    "Rendement attendu", f"{m_sel['rendement']:.2%}",
-                    delta=f"{m_sel['rendement'] - m_cur['rendement']:+.2%}",
-                    delta_color="normal",
-                )
-                st.metric(
-                    "Volatilite", f"{m_sel['volatilite']:.2%}",
-                    delta=f"{m_sel['volatilite'] - m_cur['volatilite']:+.2%}",
-                    delta_color="inverse",
-                )
-                st.metric(
-                    "Ratio de Sharpe", f"{m_sel['sharpe']:.3f}",
-                    delta=f"{m_sel['sharpe'] - m_cur['sharpe']:+.3f}",
-                    delta_color="normal",
-                )
-                st.metric(
-                    "VaR 95%", f"{m_sel['var_95']:.2%}",
-                    delta=f"{m_sel['var_95'] - m_cur['var_95']:+.2%}",
-                    delta_color="inverse",
-                )
-                st.metric(
-                    "CVaR 95%", f"{m_sel['cvar_95']:.2%}",
-                    delta=f"{m_sel['cvar_95'] - m_cur['cvar_95']:+.2%}",
-                    delta_color="inverse",
-                )
                 if w_selected is not None:
+                    m_sel = compute_portfolio_metrics(w_selected, mu, cov_matrix, rf, returns_data)
+                    st.metric(
+                        "Rendement attendu", f"{m_sel['rendement']:.2%}",
+                        delta=f"{m_sel['rendement'] - m_cur['rendement']:+.2%}",
+                        delta_color="normal",
+                    )
+                    st.metric(
+                        "Volatilite", f"{m_sel['volatilite']:.2%}",
+                        delta=f"{m_sel['volatilite'] - m_cur['volatilite']:+.2%}",
+                        delta_color="inverse",
+                    )
+                    st.metric(
+                        "Ratio de Sharpe", f"{m_sel['sharpe']:.3f}",
+                        delta=f"{m_sel['sharpe'] - m_cur['sharpe']:+.3f}",
+                        delta_color="normal",
+                    )
+                    st.metric(
+                        "VaR 95%", f"{m_sel['var_95']:.2%}",
+                        delta=f"{m_sel['var_95'] - m_cur['var_95']:+.2%}",
+                        delta_color="inverse",
+                    )
+                    st.metric(
+                        "CVaR 95%", f"{m_sel['cvar_95']:.2%}",
+                        delta=f"{m_sel['cvar_95'] - m_cur['cvar_95']:+.2%}",
+                        delta_color="inverse",
+                    )
                     fig_sel = ChartBuilder.allocation_pie(
                         w_selected, asset_names, "Allocation selectionnee"
                     )
                     st.plotly_chart(fig_sel, use_container_width=True)
                 else:
-                    st.caption("Allocation non disponible pour ce type de frontiere.")
+                    st.info("Metriques et allocation non disponibles (poids absents pour ce type de frontiere).")
 
             # Barres groupées + tableau si poids disponibles
             if w_selected is not None:
