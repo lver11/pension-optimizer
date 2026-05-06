@@ -67,16 +67,21 @@ class TestCorrelationMatrix:
     def test_diagonal_ones(self):
         assert np.allclose(np.diag(DEFAULT_CORRELATION_MATRIX), 1.0)
 
+    def test_positive_semidefinite(self):
+        """Matrix must be PSD for portfolio optimization to work correctly."""
+        eigvals = np.linalg.eigvalsh(DEFAULT_CORRELATION_MATRIX)
+        assert eigvals.min() >= -1e-10, f"Matrix not PSD: min eigenvalue = {eigvals.min():.6f}"
+
     def test_acwi_us_correlation(self):
-        """ACWI is ~65% US, so corr(ACWI, US) should be ~0.95."""
-        assert abs(DEFAULT_CORRELATION_MATRIX[13, 1] - 0.95) < 1e-9
-        assert abs(DEFAULT_CORRELATION_MATRIX[1, 13] - 0.95) < 1e-9
+        """ACWI vs US: moderated to 0.88 (vs 0.95 naive) to preserve PSD."""
+        assert abs(DEFAULT_CORRELATION_MATRIX[13, 1] - 0.88) < 1e-9
+        assert abs(DEFAULT_CORRELATION_MATRIX[1, 13] - 0.88) < 1e-9
 
     def test_acwi_eafe_correlation(self):
-        assert abs(DEFAULT_CORRELATION_MATRIX[13, 2] - 0.90) < 1e-9
+        assert abs(DEFAULT_CORRELATION_MATRIX[13, 2] - 0.83) < 1e-9
 
     def test_acwi_em_correlation(self):
-        assert abs(DEFAULT_CORRELATION_MATRIX[13, 3] - 0.82) < 1e-9
+        assert abs(DEFAULT_CORRELATION_MATRIX[13, 3] - 0.75) < 1e-9
 
 
 class TestWeights:
