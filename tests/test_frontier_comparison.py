@@ -44,14 +44,17 @@ def test_sharpe_correct():
 
 
 def test_returns_data_none_gaussian_fallback():
-    """Sans returns_data, VaR et CVaR doivent être calculées en Gaussien."""
+    """Sans returns_data, VaR et CVaR calculées via approximation gaussienne avec drift."""
+    from scipy import stats as _stats
     mu, cov, rf, w = _simple_setup()
     m = compute_portfolio_metrics(w, mu, cov, rf, returns_data=None)
-    from scipy.stats import norm
+    ret = float(w @ mu)
     vol = float(np.sqrt(w @ cov @ w))
-    expected_var = vol * norm.ppf(0.95)
+    expected_var = -(ret + vol * _stats.norm.ppf(0.05))
+    expected_cvar = -(ret - vol * _stats.norm.pdf(_stats.norm.ppf(0.05)) / 0.05)
     assert abs(m["var_95"] - expected_var) < 1e-8
-    assert m["cvar_95"] > m["var_95"]  # CVaR >= VaR toujours
+    assert abs(m["cvar_95"] - expected_cvar) < 1e-8
+    assert m["cvar_95"] >= m["var_95"]
 
 
 def test_returns_data_historical():

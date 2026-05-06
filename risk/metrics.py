@@ -234,9 +234,8 @@ def compute_portfolio_metrics(
         var_95 = float(hist_metrics.get("VaR (historique)", 0.0))
         cvar_95 = float(hist_metrics.get("CVaR", 0.0))
     else:
-        from scipy.stats import norm as _norm
-        var_95 = float(vol * _norm.ppf(0.95))
-        cvar_95 = float(vol * _norm.pdf(_norm.ppf(0.05)) / 0.05)
+        var_95 = float(-(ret + vol * stats.norm.ppf(0.05)))
+        cvar_95 = float(-(ret - vol * stats.norm.pdf(stats.norm.ppf(0.05)) / 0.05))
 
     return {
         "rendement": ret,
