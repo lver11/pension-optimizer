@@ -82,3 +82,12 @@ def test_zero_vol_sharpe():
     w = np.array([0.5, 0.5])
     m = compute_portfolio_metrics(w, mu, cov, rf)
     assert m["sharpe"] == 0.0
+
+
+def test_returns_data_ndarray():
+    mu, cov, rf, w = _simple_setup()
+    np.random.seed(0)
+    returns_data = np.random.randn(120, 3) * [0.16, 0.08, 0.01] / np.sqrt(12)
+    m = compute_portfolio_metrics(w, mu, cov, rf, returns_data=returns_data)
+    assert m["var_95"] > 0
+    assert m["cvar_95"] >= m["var_95"]
