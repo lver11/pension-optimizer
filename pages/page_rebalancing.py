@@ -28,8 +28,10 @@ TRANSACTION_COSTS_BPS = {
     "Immobilier": 150,
     "Infrastructure": 200,
     "Capital investissement": 200,
+    "Rendement absolu": 15,
     "Matieres premieres": 20,
     "Encaisse": 1,
+    "Actions MSCI ACWI": 10,
 }
 
 
