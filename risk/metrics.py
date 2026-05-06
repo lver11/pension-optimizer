@@ -200,3 +200,48 @@ class RiskMetrics:
             )
 
         return metrics
+
+
+def compute_portfolio_metrics(
+    weights: np.ndarray,
+    mu: np.ndarray,
+    cov_matrix: np.ndarray,
+    rf: float,
+    returns_data=None,
+) -> dict:
+    """Calcule les métriques clés d'un portefeuille.
+
+    Args:
+        weights: Vecteur de poids (somme = 1).
+        mu: Rendements attendus annualisés.
+        cov_matrix: Matrice de covariance annualisée.
+        rf: Taux sans risque annualisé.
+        returns_data: DataFrame ou ndarray (T x N) de rendements historiques.
+                      Si None, VaR et CVaR sont approximées par un modèle gaussien.
+
+    Returns:
+        Dict avec clés : rendement, volatilite, sharpe, var_95, cvar_95.
+    """
+    weights = np.asarray(weights, dtype=float)
+    ret = float(weights @ mu)
+    var_port = float(weights @ cov_matrix @ weights)
+    vol = float(np.sqrt(max(var_port, 0.0)))
+    sharpe = (ret - rf) / vol if vol > 1e-10 else 0.0
+
+    if returns_data is not None:
+        port_returns = np.asarray(returns_data) @ weights
+        hist_metrics = RiskMetrics.compute_all(port_returns, rf)
+        var_95 = float(hist_metrics.get("VaR (historique)", 0.0))
+        cvar_95 = float(hist_metrics.get("CVaR", 0.0))
+    else:
+        from scipy.stats import norm as _norm
+        var_95 = float(vol * _norm.ppf(0.95))
+        cvar_95 = float(vol * _norm.pdf(_norm.ppf(0.05)) / 0.05)
+
+    return {
+        "rendement": ret,
+        "volatilite": vol,
+        "sharpe": sharpe,
+        "var_95": var_95,
+        "cvar_95": cvar_95,
+    }
