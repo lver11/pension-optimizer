@@ -5,6 +5,7 @@ Page de la frontiere efficiente interactive.
 import streamlit as st
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -273,10 +274,5 @@ def render():
                 "Sharpe": "{:.3f}",
             }), use_container_width=True)
 
-
-try:
-    import plotly.graph_objects as go
-except ImportError:
-    pass
 
 render()
