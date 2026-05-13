@@ -32,6 +32,7 @@ TRANSACTION_COSTS_BPS = {
     "Matieres premieres": 20,
     "Encaisse": 1,
     "Actions MSCI ACWI": 10,
+    "Dette pays emergents": 25,
 }
 
 
