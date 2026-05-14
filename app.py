@@ -14,6 +14,26 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 
+def _reset_session_if_universe_changed():
+    """Reinitialise le session_state si l'univers d'actifs a change de taille.
+
+    Necessaire lors des redéploiements qui ajoutent ou retirent des classes
+    d'actifs : current_weights (ancien n) serait desynchronise avec
+    ASSET_CLASSES_ORDER (nouveau n), provoquant des erreurs silencieuses ou
+    des crashs dans les graphiques et les optimisations.
+    """
+    from config import ASSET_CLASSES_ORDER
+    n_expected = len(ASSET_CLASSES_ORDER)
+    cached_weights = st.session_state.get("current_weights")
+    if cached_weights is not None and len(cached_weights) != n_expected:
+        keys_to_clear = [
+            "returns_data", "current_weights", "optimization_result",
+            "custom_expected_returns", "custom_volatilities",
+        ]
+        for key in keys_to_clear:
+            st.session_state.pop(key, None)
+
+
 def main():
     st.set_page_config(
         page_title="Optimiseur de Portefeuille - Caisse de Retraite",
@@ -21,6 +41,9 @@ def main():
         layout="wide",
         initial_sidebar_state="expanded",
     )
+
+    # Reinitialiser le session_state si l'univers d'actifs a change de taille
+    _reset_session_if_universe_changed()
 
     # Style CSS personnalise (compatible dark/light mode)
     st.markdown("""
