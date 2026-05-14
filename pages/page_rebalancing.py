@@ -33,6 +33,8 @@ TRANSACTION_COSTS_BPS = {
     "Encaisse": 1,
     "Actions MSCI ACWI": 10,
     "Dette pays emergents": 25,
+    "Dette privee": 300,      # Marche prive tres illiquide
+    "Obligations HY": 30,     # Liquide mais spread bid-ask plus large que IG
 }
 
 
