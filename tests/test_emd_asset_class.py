@@ -1,6 +1,6 @@
 # tests/test_emd_asset_class.py
 """
-Tests for the Dette pays emergents 15th asset class addition.
+Tests for the Dette pays emergents asset class (index 14).
 Run: pytest tests/test_emd_asset_class.py -v
 """
 import sys, os
@@ -18,21 +18,21 @@ from config import (
 from constraints.regulatory import QuebecPensionRegulations, PortableAlphaRegulations
 
 
-N = 15  # expected number of asset classes after adding EMD
+N = 17  # current number of asset classes
 
 
 class TestAssetCount:
-    def test_asset_names_has_15_entries(self):
+    def test_asset_names_has_N_entries(self):
         assert len(get_asset_names_fr()) == N
 
-    def test_asset_classes_order_has_15_entries(self):
+    def test_asset_classes_order_has_N_entries(self):
         assert len(ASSET_CLASSES_ORDER) == N
 
     def test_emd_enum_exists(self):
         assert hasattr(AssetClass, "DETTE_EMERGENTE")
 
-    def test_emd_is_last_in_order(self):
-        assert ASSET_CLASSES_ORDER[-1] == AssetClass.DETTE_EMERGENTE
+    def test_emd_is_at_index_14(self):
+        assert ASSET_CLASSES_ORDER[14] == AssetClass.DETTE_EMERGENTE
 
     def test_emd_name_fr(self):
         names = get_asset_names_fr()
@@ -63,7 +63,7 @@ class TestEMDParams:
 
 
 class TestCorrelationMatrix:
-    def test_shape_is_15x15(self):
+    def test_shape_is_NxN(self):
         assert DEFAULT_CORRELATION_MATRIX.shape == (N, N)
 
     def test_symmetric(self):
@@ -118,7 +118,7 @@ class TestWeights:
 
 
 class TestChartColors:
-    def test_chart_colors_has_15_entries(self):
+    def test_chart_colors_has_N_entries(self):
         assert len(CHART_COLORS) == N
 
 

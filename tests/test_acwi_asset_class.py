@@ -1,6 +1,6 @@
 # tests/test_acwi_asset_class.py
 """
-Tests for the MSCI ACWI 14th asset class addition.
+Tests for the MSCI ACWI asset class (index 13).
 Run: pytest tests/test_acwi_asset_class.py -v
 """
 import sys, os
@@ -18,21 +18,21 @@ from config import (
 from constraints.regulatory import QuebecPensionRegulations, PortableAlphaRegulations
 
 
-N = 14  # expected number of asset classes after adding ACWI
+N = 17  # current number of asset classes
 
 
 class TestAssetCount:
-    def test_asset_names_has_14_entries(self):
+    def test_asset_names_has_N_entries(self):
         assert len(get_asset_names_fr()) == N
 
-    def test_asset_classes_order_has_14_entries(self):
+    def test_asset_classes_order_has_N_entries(self):
         assert len(ASSET_CLASSES_ORDER) == N
 
     def test_acwi_enum_exists(self):
         assert hasattr(AssetClass, "ACTIONS_ACWI")
 
-    def test_acwi_is_last_in_order(self):
-        assert ASSET_CLASSES_ORDER[-1] == AssetClass.ACTIONS_ACWI
+    def test_acwi_is_at_index_13(self):
+        assert ASSET_CLASSES_ORDER[13] == AssetClass.ACTIONS_ACWI
 
     def test_acwi_name_fr(self):
         names = get_asset_names_fr()
@@ -58,7 +58,7 @@ class TestACWIParams:
 
 
 class TestCorrelationMatrix:
-    def test_shape_is_14x14(self):
+    def test_shape_is_NxN(self):
         assert DEFAULT_CORRELATION_MATRIX.shape == (N, N)
 
     def test_symmetric(self):
@@ -113,7 +113,7 @@ class TestWeights:
 
 
 class TestChartColors:
-    def test_chart_colors_has_14_entries(self):
+    def test_chart_colors_has_N_entries(self):
         assert len(CHART_COLORS) == N
 
 
