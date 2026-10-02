@@ -202,6 +202,7 @@ def render():
         st.session_state.returns_data = generator.generate_returns(
             n_years=n_years, frequency="monthly",
         )
+        st.session_state.returns_source = {"type": "simulees", "graine": int(seed)}
         st.success("Donnees regenerees!")
 
     if "returns_data" in st.session_state:

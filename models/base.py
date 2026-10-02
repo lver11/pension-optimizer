@@ -9,6 +9,32 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 
+WEIGHT_TOLERANCE = 5e-5  # 0,005 % : en dessous, un poids est considere nul
+
+
+def clean_weights(
+    weights: np.ndarray,
+    max_weights: Optional[np.ndarray] = None,
+    tol: float = WEIGHT_TOLERANCE,
+) -> np.ndarray:
+    """
+    Met a zero les poids residuels du solveur (|w| < tol) dans un portefeuille long-only
+    et reporte le petit residu sur la classe qui a le plus de marge sous sa borne max,
+    pour garder une somme exacte de 1 sans depasser les bornes.
+    """
+    w = np.asarray(weights, dtype=float).copy()
+    if np.any(w < -tol):  # portefeuille avec positions courtes : ne pas toucher
+        return w
+    w[np.abs(w) < tol] = 0.0
+    w = np.maximum(w, 0.0)
+    residual = 1.0 - w.sum()
+    if abs(residual) > 1e-12 and w.sum() > 0:
+        caps = np.ones_like(w) if max_weights is None else np.asarray(max_weights, dtype=float)
+        slack = np.where(w > 0, caps - w, -np.inf) if residual > 0 else np.where(w > 0, w, -np.inf)
+        w[int(np.argmax(slack))] += residual
+    return w
+
+
 @dataclass
 class OptimizationResult:
     """Resultat d'une optimisation de portefeuille."""
@@ -98,6 +124,7 @@ class BaseOptimizer(ABC):
         self, weights: np.ndarray, status: str, start_time: float, metadata: Dict = None
     ) -> OptimizationResult:
         """Construit un OptimizationResult a partir des poids optimaux."""
+        weights = clean_weights(weights, self.max_weights)
         port_return, port_vol, sharpe = self._compute_portfolio_stats(weights)
         risk_contrib = self._compute_risk_contributions(weights)
         return OptimizationResult(

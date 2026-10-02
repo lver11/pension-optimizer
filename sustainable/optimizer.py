@@ -104,6 +104,8 @@ class DurableOptimizer(BaseOptimizer):
         self, weights, status, start_time, lam, gamma, sustainability_scores,
         use_durable_map=None,
     ) -> DurableResult:
+        from models.base import clean_weights
+        weights = clean_weights(weights, self.max_weights)
         port_return, port_vol, sharpe = self._compute_portfolio_stats(weights)
         risk_contrib = self._compute_risk_contributions(weights)
         sustain_score = float(sustainability_scores @ weights)

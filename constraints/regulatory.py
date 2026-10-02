@@ -126,14 +126,14 @@ class PolicyLimits:
     def funding_policy_check(
         cls, funded_ratio: float, target_ratio: float = 1.0,
     ) -> Dict:
-        """Analyse la politique de capitalisation."""
+        """Niveau de capitalisation seul (voir ALMOptimizer.assess_status pour le diagnostic complet)."""
         if funded_ratio < 0.80:
             status = "critique"
-            action = "Action corrective immediate requise. Plan de redressement obligatoire."
+            action = "Deficit important : un plan pour resorber le deficit est requis."
             color = "red"
         elif funded_ratio < 0.90:
             status = "insuffisant"
-            action = "Plan de redressement a etablir dans les 12 prochains mois."
+            action = "Deficit a resorber : etablir un plan de redressement."
             color = "orange"
         elif funded_ratio < 1.00:
             status = "surveillance"

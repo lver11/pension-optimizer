@@ -81,6 +81,16 @@ class FundProfile:
     rendements_attendus: Optional[Dict[str, float]] = None
     volatilites: Optional[Dict[str, float]] = None
 
+    # Passif detaille (facultatif) : flux de prestations projetes et courbe d'actualisation.
+    # flux_passif : [{"annee": 1, "nominal": ..., "indexe": ...}, ...]
+    # courbe_actualisation : {"2": 0.031, "5": 0.033, ...} (taux zero-coupon annuels)
+    flux_passif: Optional[List[Dict[str, float]]] = None
+    courbe_actualisation: Optional[Dict[str, float]] = None
+    convexite_passif: Optional[float] = None  # sans flux ; None = estimation
+
+    # Cle du profil type d'origine ; None des que le profil est modifie et applique
+    profil_type: Optional[str] = None
+
     # ------------------------------------------------------------------
     # Conversion en vecteurs alignes sur ASSET_CLASSES_ORDER
     # ------------------------------------------------------------------
@@ -113,6 +123,49 @@ class FundProfile:
         if not self.volatilites:
             return None
         return self._array(self.volatilites, "volatility")
+
+    # ------------------------------------------------------------------
+    # Passif detaille
+    # ------------------------------------------------------------------
+    def yield_curve(self):
+        from models.liability import YieldCurve
+        return YieldCurve.from_dict(self.courbe_actualisation or {}, self.taux_actualisation)
+
+    def liability_cashflows(self):
+        if not self.flux_passif:
+            return None
+        from models.liability import LiabilityCashflows
+        return LiabilityCashflows.from_records(self.flux_passif)
+
+    def liability_measures(self) -> Dict[str, float]:
+        """Valeur, duration et convexite du passif, et leur provenance."""
+        from models.liability import estimated_liability_convexity
+        cf = self.liability_cashflows()
+        if cf is not None:
+            curve = self.yield_curve()
+            return {
+                "source": "flux",
+                "valeur": cf.present_value(curve),
+                "duration": cf.effective_duration(curve),
+                "convexite": cf.effective_convexity(curve),
+                "nb_annees": int(len(cf.years)),
+            }
+        conv = self.convexite_passif
+        return {
+            "source": "valeur_duration",
+            "valeur": float(self.valeur_passif or 0.0),
+            "duration": float(self.duration_passif),
+            "convexite": float(conv) if conv is not None
+            else estimated_liability_convexity(self.duration_passif, self.taux_actualisation),
+            "convexite_estimee": conv is None,
+        }
+
+    def sync_liability_from_cashflows(self) -> None:
+        """Avec des flux, la valeur et la duration du passif en decoulent."""
+        if self.flux_passif:
+            m = self.liability_measures()
+            self.valeur_passif = m["valeur"]
+            self.duration_passif = m["duration"]
 
     @property
     def a_un_passif(self) -> bool:
@@ -168,6 +221,27 @@ class FundProfile:
             if g.min > g.max + TOL:
                 errors.append(f"Limite '{g.nom}': min ({g.min:.0%}) > max ({g.max:.0%})")
 
+        if self.flux_passif is not None:
+            try:
+                years = [float(r["annee"]) for r in self.flux_passif]
+                flows = [float(r.get("nominal", 0.0)) + float(r.get("indexe", 0.0)) for r in self.flux_passif]
+            except (KeyError, TypeError, ValueError):
+                errors.append("Flux du passif : chaque ligne doit avoir 'annee' et 'nominal' (et 'indexe' facultatif).")
+            else:
+                if any(y <= 0 for y in years):
+                    errors.append("Flux du passif : les annees doivent etre positives.")
+                if len(set(years)) != len(years):
+                    errors.append("Flux du passif : annees en double.")
+                if any(f < 0 for f in flows) or sum(flows) <= 0:
+                    errors.append("Flux du passif : les flux doivent etre positifs ou nuls, avec au moins un flux positif.")
+        if self.courbe_actualisation:
+            try:
+                pts = {float(k): float(v) for k, v in self.courbe_actualisation.items()}
+            except (TypeError, ValueError):
+                errors.append("Courbe d'actualisation : echeances et taux doivent etre numeriques.")
+            else:
+                if any(t <= 0 for t in pts) or any(not (-0.05 < r < 0.25) for r in pts.values()):
+                    errors.append("Courbe d'actualisation : echeances positives et taux entre -5 % et 25 %.")
         if self.type_fonds not in TYPES_FONDS:
             errors.append(f"Type de fonds inconnu: {self.type_fonds}")
         if self.valeur_actif <= 0:
@@ -386,12 +460,23 @@ def profil_exemple_fondaction() -> FundProfile:
     )
 
 
+def _tagged(key, factory):
+    def make() -> FundProfile:
+        p = factory()
+        p.profil_type = key
+        return p
+    make.__name__ = factory.__name__
+    return make
+
+
 PROFILS_TYPES = {
-    "pd_generique": profil_pd_generique,
-    "pd_mature": profil_pd_mature,
-    "cd_equilibre": profil_cd_equilibre,
-    "fondation": profil_fondation,
-    "exemple_fondaction": profil_exemple_fondaction,
+    key: _tagged(key, f) for key, f in {
+        "pd_generique": profil_pd_generique,
+        "pd_mature": profil_pd_mature,
+        "cd_equilibre": profil_cd_equilibre,
+        "fondation": profil_fondation,
+        "exemple_fondaction": profil_exemple_fondaction,
+    }.items()
 }
 
 PROFIL_PAR_DEFAUT = "pd_generique"
@@ -404,6 +489,7 @@ PROFIL_PAR_DEFAUT = "pd_generique"
 def apply_profile(profile: FundProfile, reset_weights: bool = True) -> None:
     """Active un profil dans la session Streamlit et synchronise l'etat derive."""
     import streamlit as st
+    profile.sync_liability_from_cashflows()
     st.session_state.fund_profile = profile
     st.session_state.profile_version = st.session_state.get("profile_version", 0) + 1
     st.session_state.pension_config = profile.to_pension_config()
@@ -444,3 +530,22 @@ def ensure_session_state() -> None:
         from data.generator import MarketDataGenerator
         generator = MarketDataGenerator(seed=42)
         st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
+        st.session_state.returns_source = {"type": "simulees", "graine": 42}
+
+
+def describe_returns_source() -> str:
+    """Description courte de la serie de rendements utilisee par les mesures ex post."""
+    import streamlit as st
+    src = st.session_state.get("returns_source") or {"type": "simulees", "graine": 42}
+    df = st.session_state.get("returns_data")
+    n = len(df) if df is not None else 0
+    if src.get("type") == "importees":
+        periode = ""
+        if df is not None and n:
+            try:
+                periode = f", {df.index[0]:%Y-%m} a {df.index[-1]:%Y-%m}"
+            except (TypeError, ValueError):
+                periode = ""
+        return f"rendements importes ({src.get('fichier', 'fichier')}, {n} periodes{periode})"
+    return (f"rendements simules ({n} mois, graine {src.get('graine', 42)}) : une trajectoire "
+            "aleatoire tiree des hypotheses avec regimes de crise, pas l'historique reel")

@@ -13,6 +13,7 @@ from config import (
     get_asset_names_fr, get_expected_returns, get_covariance_matrix,
     DEFAULT_CURRENT_WEIGHTS, PensionFundConfig,
 )
+from ui_notes import show_assumption_notes
 from fund_profile import ensure_session_state, get_active_profile
 from config import get_policy_weights
 from data.generator import MarketDataGenerator
@@ -24,6 +25,7 @@ def render():
     st.title("Simulation Monte Carlo")
 
     ensure_session_state()
+    show_assumption_notes(simulated_returns_used=False)
 
     config = st.session_state.get("pension_config", PensionFundConfig())
     weights = st.session_state.get("current_weights", get_policy_weights())

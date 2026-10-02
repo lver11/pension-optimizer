@@ -14,7 +14,8 @@ from config import (
     get_min_weights, get_max_weights, DEFAULT_CURRENT_WEIGHTS,
     DEFAULT_CORRELATION_MATRIX, PensionFundConfig, ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
-from fund_profile import ensure_session_state
+from ui_notes import show_assumption_notes
+from fund_profile import ensure_session_state, describe_returns_source
 from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from risk.metrics import RiskMetrics
@@ -26,6 +27,7 @@ def render():
 
     # --- Initialisation des donnees ---
     ensure_session_state()
+    show_assumption_notes(simulated_returns_used=True)
 
     asset_names = get_asset_names_fr()
     weights = st.session_state.get("current_weights", get_policy_weights())
@@ -42,39 +44,37 @@ def render():
     # Metriques historiques (VaR, CVaR, MDD) basees sur les donnees simulees
     portfolio_returns = returns_data.values @ weights
     metrics = RiskMetrics.compute_all(portfolio_returns, config.taux_sans_risque)
-    # Remplacer rendement/vol/sharpe par les valeurs theoriques pour coherence
-    metrics["Rendement annualise"] = port_ret
-    metrics["Volatilite annualisee"] = port_vol
-    metrics["Ratio de Sharpe"] = port_sharpe
 
     # --- KPIs principaux ---
-    st.markdown("### Indicateurs cles de performance")
-    col1, col2, col3, col4, col5 = st.columns(5)
+    st.markdown("### Indicateurs cles")
+    hist_sharpe = RiskMetrics.sharpe_ratio(portfolio_returns, config.taux_sans_risque, True, 12)
 
-    col1.metric("Valeur de l'actif", f"{config.valeur_actif/1e6:,.0f} M$")
-    col2.metric(
-        "Rendement attendu",
-        f"{metrics.get('Rendement annualise', 0):.2%}",
-    )
-    col3.metric(
-        "Volatilite",
-        f"{metrics.get('Volatilite annualisee', 0):.2%}",
-    )
-    col4.metric(
-        "Ratio de Sharpe",
-        f"{metrics.get('Ratio de Sharpe', 0):.3f}",
-    )
-    col5.metric(
-        "VaR (95%)",
-        f"{metrics.get('VaR (historique)', 0):.2%}",
-    )
-
-    # Deuxieme ligne de KPIs
+    st.markdown("**Ex ante - selon les hypotheses de marche** "
+                "(rendements attendus, volatilites et correlations configures)")
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("CVaR (95%)", f"{metrics.get('CVaR', 0):.2%}")
-    col2.metric("Perte maximale", f"{metrics.get('Perte maximale', 0):.2%}")
-    col3.metric("Horizon", f"{config.horizon_annees} ans")
-    col4.metric("Taux sans risque", f"{config.taux_sans_risque:.1%}")
+    col1.metric("Valeur de l'actif", f"{config.valeur_actif/1e6:,.0f} M$")
+    col2.metric("Rendement attendu (annuel)", f"{port_ret:.2%}",
+                help="Somme des poids x rendements attendus des classes d'actifs.")
+    col3.metric("Volatilite attendue (annuelle)", f"{port_vol:.2%}",
+                help="Racine de w' Sigma w, avec Sigma construite a partir des volatilites et correlations configurees.")
+    col4.metric("Ratio de Sharpe ex ante", f"{port_sharpe:.2f}",
+                help="(Rendement attendu - taux sans risque) / volatilite attendue.")
+
+    st.markdown(f"**Ex post - selon la serie de rendements** : {describe_returns_source()}")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("VaR 95 % (1 mois)", f"{metrics.get('VaR (historique)', 0):.2%}",
+                help="Perte mensuelle depassee 5 % du temps dans la serie (methode historique).")
+    col2.metric("CVaR 95 % (1 mois)", f"{metrics.get('CVaR', 0):.2%}",
+                help="Perte mensuelle moyenne dans les 5 % pires mois de la serie.")
+    col3.metric("Perte maximale", f"{metrics.get('Perte maximale', 0):.2%}",
+                help="Plus forte baisse d'un sommet a un creux dans la serie.")
+    col4.metric("Ratio de Sharpe ex post", f"{hist_sharpe:.2f}",
+                help="Rendement moyen excedentaire / ecart-type de la serie, annualise. "
+                     "Peut differer fortement du Sharpe ex ante : une serie de 20 ans est un seul "
+                     "echantillon, avec ses crises.")
+    st.caption(f"Horizon {config.horizon_annees} ans - taux sans risque {config.taux_sans_risque:.1%}. "
+               "Pour changer la serie de rendements : page Source de donnees (simulation) "
+               "ou page Rapports (import de vos donnees).")
 
     st.divider()
 
@@ -187,10 +187,18 @@ def render():
 
     with tab4:
         st.markdown("### Toutes les metriques de risque")
-        metrics_df = pd.DataFrame([
-            {"Metrique": k, "Valeur": f"{v:.4f}" if abs(v) < 10 else f"{v:.2f}"}
+        rows = [
+            {"Metrique": "Rendement attendu (annuel)", "Valeur": f"{port_ret:.4f}", "Base": "Ex ante - hypotheses"},
+            {"Metrique": "Volatilite attendue (annuelle)", "Valeur": f"{port_vol:.4f}", "Base": "Ex ante - hypotheses"},
+            {"Metrique": "Ratio de Sharpe ex ante", "Valeur": f"{port_sharpe:.4f}", "Base": "Ex ante - hypotheses"},
+        ]
+        rows += [
+            {"Metrique": k, "Valeur": f"{v:.4f}" if abs(v) < 10 else f"{v:.2f}",
+             "Base": "Ex post - serie mensuelle"}
             for k, v in metrics.items()
-        ])
+        ]
+        metrics_df = pd.DataFrame(rows)
+        st.caption(f"Ex post : {describe_returns_source()}. VaR et CVaR sur 1 mois ; ratios annualises.")
         st.dataframe(metrics_df, use_container_width=True, hide_index=True)
 
         # Rendements mensuels recents

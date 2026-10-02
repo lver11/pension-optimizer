@@ -329,7 +329,13 @@ La page est active seulement si le profil de fonds a un passif actuariel ; sinon
 
 **4 sections** :
 
-1. **Indicateurs ALM** : ratio de capitalisation, surplus (M$), ecart de duration (annees), statut de capitalisation avec recommandation d'action
+1. **Indicateurs ALM** : ratio de capitalisation, surplus (M$), ecart de duration (annees), ratio de couverture du risque de taux, et statut. Le statut retient le plus severe de deux diagnostics : le niveau de capitalisation et la perte de capitalisation en cas de baisse des taux de 100 pb (seuils detailles dans l'encadre *Comment le statut est calcule*). Un regime capitalise a 100 % mais tres expose aux taux n'est donc plus affiche « adequat ».
+
+   **Exposition par segment de courbe** : valeur d'un point de base (k$) de l'actif et du passif aux echeances 2, 5, 10, 20 et 30 ans, pour verifier que la couverture porte sur la bonne partie de la courbe.
+
+   **Ratio de couverture** = duration-dollar de l'actif / duration-dollar du passif. Le poids obligataire requis pour une cible depend de la duration des obligations de couverture et du ratio de capitalisation ; l'application indique quand la cible est inatteignable sans levier.
+
+   **Passif detaille (facultatif)** : dans Profil du fonds, importez les flux de prestations projetes de l'evaluation actuarielle (CSV `annee, nominal, indexe` ; un gabarit est telechargeable) et, au besoin, une courbe d'actualisation (2, 5, 10, 20, 30 ans). Le passif est alors reevalue exactement sur la courbe choquee : la convexite et les durations par echeance sont calculees. Sans flux, l'application utilise la valeur, la duration et une convexite estimee pour un passif de retraite typique.
 
 2. **Sensibilite aux taux** : impact sur l'actif, le passif, le surplus et le ratio de capitalisation pour des chocs de -200 a +200 bps
 
@@ -345,6 +351,13 @@ La page est active seulement si le profil de fonds a un passif actuariel ; sinon
 5. **Projection des flux de tresorerie** : cotisations, prestations et flux net sur 30 ans
 
 ---
+
+### Lire les indicateurs : ex ante ou ex post
+
+- **Ex ante** (tableau de bord, optimisation, frontiere, Monte Carlo) : calcules a partir des hypotheses de marche (rendements attendus, volatilites, correlations).
+- **Ex post** (VaR, CVaR, perte maximale, page Analytique de risque) : mesures sur une serie de rendements mensuels - simulee par defaut, ou vos donnees importees. La source est indiquee a cote des chiffres.
+
+Une serie simulee de 20 ans est un seul tirage, avec periodes de crise : son Sharpe peut etre tres different du Sharpe ex ante sans que ce soit une erreur.
 
 ### 3.10 Gestion - Rapports
 

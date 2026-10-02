@@ -22,6 +22,7 @@ from config import (
 from models.portable_alpha import PortableAlphaOptimizer, PortableAlphaResult
 from constraints.manager import ConstraintManager
 from constraints.regulatory import PortableAlphaRegulations
+from ui_notes import show_assumption_notes
 from fund_profile import ensure_session_state
 from visualization.charts import ChartBuilder
 
@@ -34,6 +35,7 @@ positions long/short. Le levier est controle par les parametres de la strategie.
 """)
 
 ensure_session_state()
+show_assumption_notes(simulated_returns_used=False)
 benchmarks = get_benchmark_portfolios()
 
 # ============================================================

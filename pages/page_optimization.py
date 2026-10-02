@@ -14,6 +14,7 @@ from config import (
     get_min_weights, get_max_weights, DEFAULT_CURRENT_WEIGHTS,
     PensionFundConfig, ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
+from ui_notes import show_assumption_notes
 from fund_profile import ensure_session_state, get_active_profile
 from config import get_policy_weights
 from data.generator import MarketDataGenerator
@@ -31,6 +32,7 @@ def render():
 
     # --- Initialisation des donnees ---
     ensure_session_state()
+    show_assumption_notes(simulated_returns_used=True)
 
     asset_names = get_asset_names_fr()
     returns_data = st.session_state.returns_data
@@ -364,9 +366,9 @@ def render():
             })
             st.dataframe(
                 comp_df.style.format({
-                    "Actuel (%)": "{:.1f}",
-                    "Optimise (%)": "{:.1f}",
-                    "Ecart (pp)": "{:+.1f}",
+                    "Actuel (%)": "{:.2f}",
+                    "Optimise (%)": "{:.2f}",
+                    "Ecart (pp)": "{:+.2f}",
                 }),
                 use_container_width=True,
                 hide_index=True,

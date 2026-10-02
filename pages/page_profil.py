@@ -96,6 +96,82 @@ def render():
     st.divider()
 
     # ------------------------------------------------------------------
+    # Passif detaille : flux de prestations
+    # ------------------------------------------------------------------
+    st.markdown("### Flux de prestations du passif (regimes PD, facultatif)")
+    st.caption(
+        "Importez les flux de prestations projetes de votre evaluation actuarielle (CSV : "
+        "colonnes `annee`, `nominal` et, facultatif, `indexe`, en $). Le passif est alors "
+        "reevalue exactement sur la courbe d'actualisation : convexite et durations par echeance "
+        "sont calculees au lieu d'etre estimees. La colonne `indexe` est additionnee aux flux "
+        "nominaux pour l'instant ; la distinction nominal / indexe viendra avec le risque d'inflation."
+    )
+    measures = profile.liability_measures() if profile.a_un_passif or profile.flux_passif else None
+    if profile.flux_passif:
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Annees de flux", measures["nb_annees"])
+        c2.metric("Valeur actualisee", f"{measures['valeur'] / 1e6:,.0f} M$")
+        c3.metric("Duration effective", f"{measures['duration']:.1f} ans")
+        c4.metric("Convexite effective", f"{measures['convexite']:.0f}")
+        if st.button("Retirer les flux (revenir a valeur + duration)"):
+            new = profile.copy()
+            new.flux_passif = None
+            apply_profile(new, reset_weights=False)
+            st.rerun()
+    elif measures is not None:
+        st.info(
+            f"Aucun flux importe : le passif est decrit par sa valeur ({measures['valeur'] / 1e6:,.0f} M$), "
+            f"sa duration ({measures['duration']:.1f} ans) et une convexite "
+            f"{'estimee' if measures.get('convexite_estimee') else 'saisie'} ({measures['convexite']:.0f})."
+        )
+
+    c1, c2 = st.columns(2)
+    with c1:
+        flows_file = st.file_uploader("Importer des flux (CSV)", type=["csv"], key=f"flows_{version}")
+        if flows_file is not None and st.button("Utiliser ces flux"):
+            try:
+                df = pd.read_csv(flows_file, sep=None, engine="python")
+                df.columns = [str(c).strip().lower() for c in df.columns]
+                if "annee" not in df.columns or "nominal" not in df.columns:
+                    raise ValueError("colonnes attendues : annee, nominal (indexe facultatif)")
+                for c in ("annee", "nominal", "indexe"):
+                    if c in df.columns and df[c].dtype == object:
+                        df[c] = (df[c].astype(str).str.replace("\u00a0", "").str.replace(" ", "")
+                                 .str.replace(",", ".").astype(float))
+                if "indexe" not in df.columns:
+                    df["indexe"] = 0.0
+                records = [{"annee": int(r.annee), "nominal": float(r.nominal), "indexe": float(r.indexe)}
+                           for r in df.fillna(0.0).itertuples()]
+                new = profile.copy()
+                new.flux_passif = records
+                if new.valeur_passif is None:
+                    new.valeur_passif = 1.0  # remplace par la valeur actualisee des flux
+                errors, _ = new.validate()
+                if errors:
+                    for e in errors:
+                        st.error(e)
+                else:
+                    apply_profile(new, reset_weights=False)
+                    st.rerun()
+            except Exception as exc:
+                st.error(f"Import impossible : {exc}")
+    with c2:
+        from models.liability import example_cashflows
+        ex_pv = profile.valeur_passif or profile.valeur_actif
+        example = pd.DataFrame(example_cashflows(ex_pv, profile.duration_passif or 15.0,
+                                                 profile.taux_actualisation))
+        st.download_button(
+            "Telecharger un gabarit CSV (flux d'exemple)",
+            data=example.to_csv(index=False),
+            file_name="flux_passif_gabarit.csv",
+            mime="text/csv",
+            help="Flux illustratifs calibres sur la valeur et la duration du passif du profil. "
+                 "Remplacez-les par les flux de votre evaluation actuarielle.",
+        )
+
+    st.divider()
+
+    # ------------------------------------------------------------------
     # Edition
     # ------------------------------------------------------------------
     st.markdown("### Modifier le profil")
@@ -127,6 +203,25 @@ def render():
             "Taux d'actualisation (%)", 0.0, 15.0, float(profile.taux_actualisation * 100), 0.1) / 100
         croissance_passif = c3.number_input(
             "Croissance du passif (%)", 0.0, 15.0, float(profile.croissance_passif * 100), 0.1) / 100
+
+        st.markdown("##### Courbe d'actualisation du passif")
+        use_curve = st.checkbox(
+            "Utiliser une courbe de taux (sinon : taux d'actualisation unique)",
+            bool(profile.courbe_actualisation),
+        )
+        curve_now = profile.yield_curve()
+        tenors = [2, 5, 10, 20, 30]
+        curve_cols = st.columns(len(tenors))
+        curve_vals = {}
+        for col_c, t in zip(curve_cols, tenors):
+            curve_vals[str(t)] = col_c.number_input(
+                f"{t} ans (%)", -5.0, 25.0, float(round(curve_now.rate(t) * 100, 3)), 0.05,
+                key=f"curve_{t}_{version}",
+            ) / 100
+        conv_in = st.number_input(
+            "Convexite du passif sans flux (0 = estimation automatique)", 0.0, 2000.0,
+            float(profile.convexite_passif or 0.0), 10.0,
+        )
 
         st.markdown("#### Marche et horizon")
         c1, c2 = st.columns(2)
@@ -246,6 +341,9 @@ def render():
             bornes_min=dict(zip(codes, col("Min (%)"))),
             bornes_max=dict(zip(codes, col("Max (%)"))),
             limites_groupes=new_groups,
+            flux_passif=profile.flux_passif if a_passif else None,
+            courbe_actualisation=curve_vals if use_curve else None,
+            convexite_passif=conv_in if conv_in > 0 else None,
             rendements_attendus=dict(zip(codes, cma_edit["Rendement attendu (%)"].astype(float) / 100))
             if use_cma else None,
             volatilites=dict(zip(codes, cma_edit["Volatilite (%)"].astype(float) / 100))
