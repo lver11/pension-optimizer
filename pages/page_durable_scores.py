@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_notes import show_durable_example_note, explain_sustainability_score
 
 from sustainable.config import (
     DURABLE_ASSETS, DURABLE_ASSET_ORDER, DEFAULT_DIM_WEIGHTS, get_score_matrix,
@@ -41,6 +42,7 @@ def _default_scores_df(use_durable_map: dict) -> pd.DataFrame:
 
 def render():
     st.title("📊 Scores de durabilité")
+    show_durable_example_note()
     st.caption("Modifiez les scores par classe d'actifs (1 = faible, 5 = élevé). "
                "Valeurs par défaut issues du fichier Excel de cartographie.")
 

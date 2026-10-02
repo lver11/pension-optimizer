@@ -58,7 +58,7 @@ def render():
             asset = DURABLE_ASSETS[aid]
             col_check, col_name, col_toggle, col_label = st.columns([0.5, 3, 1.5, 3])
             with col_check:
-                active = st.checkbox("", value=universe[aid]["active"],
+                active = st.checkbox(f"Inclure {asset.nom}", value=universe[aid]["active"],
                                      key=f"active_{aid}", label_visibility="collapsed")
             with col_name:
                 st.write(asset.nom)

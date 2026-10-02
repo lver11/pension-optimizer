@@ -13,6 +13,7 @@ from config import (
     get_esg_scores, get_liquidity_scores, get_policy_weights, PensionFundConfig,
     ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
+from ui_notes import show_assumption_notes
 from fund_profile import ensure_session_state
 from config import get_policy_weights
 from constraints.manager import ConstraintManager, ConstraintSet, GroupConstraint
@@ -23,6 +24,7 @@ from fund_profile import get_active_profile
 def render():
     st.title("Gestionnaire de contraintes")
     ensure_session_state()
+    show_assumption_notes(simulated_returns_used=False)
 
     asset_names = get_asset_names_fr()
     n_assets = len(asset_names)

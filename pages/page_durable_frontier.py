@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_notes import show_durable_example_note, explain_sustainability_score
 
 from sustainable.config import (
     DURABLE_ASSETS, DURABLE_ASSET_ORDER, DURABLE_MIN_WEIGHTS, DURABLE_MAX_WEIGHTS,
@@ -66,6 +67,7 @@ def _get_custom_scores(use_durable_map):
 
 def render():
     st.title("📈 Frontière durable")
+    show_durable_example_note()
     st.caption("Frontière Pareto entre performance financière (Sharpe) et durabilité. "
                "Chaque point est un portefeuille optimal pour un λ différent.")
 
@@ -131,7 +133,7 @@ def render():
 
     fig.update_layout(
         title="Frontière Pareto : Score durabilité ↔ Ratio de Sharpe",
-        xaxis_title="Score de durabilité du portefeuille",
+        xaxis_title="Score de durabilité du portefeuille (1 à 5)",
         yaxis_title="Ratio de Sharpe",
         height=480, margin=dict(t=60, b=60),
         hovermode="closest",
@@ -148,7 +150,8 @@ def render():
     col1.metric("Rendement", f"{selected.expected_return:.2%}")
     col2.metric("Volatilité", f"{selected.volatility:.2%}")
     col3.metric("Sharpe", f"{selected.sharpe_ratio:.3f}")
-    col4.metric("Score durabilité", f"{selected.sustainability_score:.2f}")
+    col4.metric("Score durabilité (1 à 5)", f"{selected.sustainability_score:.2f}")
+    explain_sustainability_score(dim_weights)
 
     if st.button("➡ Utiliser ce portefeuille dans Optimisation durable"):
         st.session_state.durable_result = selected

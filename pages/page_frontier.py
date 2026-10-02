@@ -13,6 +13,7 @@ from config import (
     get_asset_names_fr, get_expected_returns, get_covariance_matrix,
     get_min_weights, get_max_weights, DEFAULT_CURRENT_WEIGHTS, PensionFundConfig,
 )
+from ui_notes import show_assumption_notes
 from fund_profile import ensure_session_state, get_active_profile
 from config import get_policy_weights
 from data.generator import MarketDataGenerator
@@ -27,6 +28,7 @@ def render():
     st.title("Frontiere efficiente")
 
     ensure_session_state()
+    show_assumption_notes(simulated_returns_used=True)
 
     asset_names = get_asset_names_fr()
     mu = get_expected_returns()

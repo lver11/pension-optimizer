@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_notes import show_durable_example_note, explain_sustainability_score
 
 from sustainable.config import (
     DURABLE_ASSETS, DURABLE_ASSET_ORDER, DEFAULT_DIM_WEIGHTS,
@@ -19,6 +20,7 @@ DIM_LABELS = ["Durabilité", "Additionnalité", "Disponibilité", "Retombées r�
 
 def render():
     st.title("📄 Rapport durable")
+    show_durable_example_note()
     st.caption("Résumé de l'optimisation durable pour présentation au conseil.")
 
     result = st.session_state.get("durable_result")
@@ -55,6 +57,7 @@ def render():
 
     # Section 2: Sustainability breakdown
     st.markdown("## 2. Score de durabilité par dimension")
+    explain_sustainability_score(dim_weights)
     custom_scores = {}
     if "durable_scores" in st.session_state:
         for _, row in st.session_state.durable_scores.iterrows():
@@ -81,7 +84,7 @@ def render():
     st.markdown("## 3. Allocation du portefeuille")
     alloc_df = pd.DataFrame({
         "Classe d'actifs": names,
-        "Poids (%)": result.weights * 100,
+        "Poids (%)": (result.weights * 100).round(2),
         "Variante durable": [
             "✅" if use_durable_map.get(aid) and DURABLE_ASSETS[aid].has_durable_variant else "—"
             for aid in active_ids
@@ -94,7 +97,7 @@ def render():
         ],
     }).sort_values("Poids (%)", ascending=False)
     st.dataframe(
-        alloc_df.style.format({"Poids (%)": "{:.1f}", "Rendement attendu (%)": "{:.2f}"}),
+        alloc_df.style.format({"Poids (%)": "{:.2f}", "Rendement attendu (%)": "{:.2f}"}),
         use_container_width=True, hide_index=True,
     )
 
