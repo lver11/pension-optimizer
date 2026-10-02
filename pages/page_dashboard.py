@@ -14,6 +14,8 @@ from config import (
     get_min_weights, get_max_weights, DEFAULT_CURRENT_WEIGHTS,
     DEFAULT_CORRELATION_MATRIX, PensionFundConfig, ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
+from fund_profile import ensure_session_state
+from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from risk.metrics import RiskMetrics
 from visualization.charts import ChartBuilder
@@ -23,14 +25,10 @@ def render():
     st.title("Tableau de bord")
 
     # --- Initialisation des donnees ---
-    if "returns_data" not in st.session_state or st.session_state.returns_data is None:
-        generator = MarketDataGenerator(seed=42)
-        st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        st.session_state.pension_config = PensionFundConfig()
+    ensure_session_state()
 
     asset_names = get_asset_names_fr()
-    weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+    weights = st.session_state.get("current_weights", get_policy_weights())
     returns_data = st.session_state.returns_data
     config = st.session_state.get("pension_config", PensionFundConfig())
 

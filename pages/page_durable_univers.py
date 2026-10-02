@@ -34,6 +34,11 @@ def _init_session():
 
 def render():
     st.title("🌍 Univers durable")
+    st.caption(
+        "Univers d'exemple tire du contexte d'un fonds de travailleurs quebecois "
+        "(variantes admissibles, micro-capitalisations du Quebec, retombees regionales). "
+        "Les hypotheses et scores sont a adapter a votre fonds (sustainable/config.py)."
+    )
     st.caption("Configurez les classes d'actifs, les variantes durables et les priorités de durabilité.")
     _init_session()
 
@@ -83,7 +88,7 @@ def render():
         "durabilite": "Durabilité",
         "additionnalite": "Additionnalité",
         "disponibilite": "Disponibilité",
-        "retombees_qc": "Retombées Québec",
+        "retombees_qc": "Retombées régionales",
         "liquidite": "Liquidité",
     }
     dw = st.session_state.durable_dim_weights

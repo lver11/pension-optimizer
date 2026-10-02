@@ -14,6 +14,8 @@ from config import (
     get_min_weights, get_max_weights, DEFAULT_CURRENT_WEIGHTS,
     PensionFundConfig, ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
+from fund_profile import ensure_session_state, get_active_profile
+from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from models.mean_variance import MeanVarianceOptimizer
 from models.black_litterman import BlackLittermanOptimizer
@@ -28,16 +30,12 @@ def render():
     st.title("Moteur d'optimisation")
 
     # --- Initialisation des donnees ---
-    if "returns_data" not in st.session_state or st.session_state.returns_data is None:
-        generator = MarketDataGenerator(seed=42)
-        st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        st.session_state.pension_config = PensionFundConfig()
+    ensure_session_state()
 
     asset_names = get_asset_names_fr()
     returns_data = st.session_state.returns_data
     config = st.session_state.get("pension_config", PensionFundConfig())
-    current_weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+    current_weights = st.session_state.get("current_weights", get_policy_weights())
 
     # --- Selection du modele ---
     st.markdown("### Configuration de l'optimisation")
@@ -72,10 +70,11 @@ def render():
     # Contraintes (depuis le gestionnaire ou bornes par defaut)
     constraint_set = None
     if apply_constraints:
-        constraint_set = st.session_state.get("constraint_set", ConstraintSet(
+        constraint_set = st.session_state.get("constraint_set") or ConstraintSet(
             min_weights=get_min_weights(),
             max_weights=get_max_weights(),
-        ))
+            group_constraints=get_active_profile().group_constraints(),
+        )
 
     st.divider()
 

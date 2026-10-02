@@ -17,7 +17,7 @@ from sustainable.config import (
 from sustainable.optimizer import DurableOptimizer
 
 DIMS = ["durabilite", "additionnalite", "disponibilite", "retombees_qc", "liquidite"]
-DIM_LABELS = ["Durabilité", "Additionnalité", "Disponibilité", "Retombées Qc", "Liquidité"]
+DIM_LABELS = ["Durabilité", "Additionnalité", "Disponibilité", "Retombées régionales", "Liquidité"]
 
 
 def _get_active_config():

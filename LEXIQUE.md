@@ -236,7 +236,7 @@ La droite qui part du taux sans risque et passe par le portefeuille tangent. Tou
 Le portefeuille avec la plus faible volatilite possible, sans aucune contrainte de rendement. Il se situe a l'extremite gauche de la frontiere efficiente.
 
 ### Frontiere non contrainte
-La frontiere calculee sans les contraintes reglementaires ni les bornes d'allocation. Elle est toujours au-dessus (ou confondue avec) la frontiere contrainte. La difference entre les deux represente le "cout" des contraintes.
+La frontiere calculee sans les limites de politique ni les bornes d'allocation. Elle est toujours au-dessus (ou confondue avec) la frontiere contrainte. La difference entre les deux represente le "cout" des contraintes.
 
 ### Frontiere Moyenne-CVaR
 Variante de la frontiere efficiente ou l'axe horizontal represente la CVaR au lieu de la volatilite. Utile quand on se preoccupe des pertes extremes plutot que de la dispersion symetrique.
@@ -484,7 +484,10 @@ Le score ESG du portefeuille est la moyenne ponderee des scores de chaque classe
 Les emissions de gaz a effet de serre par million de dollars investi (tCO2e/M$). Utilisee pour mesurer l'empreinte environnementale du portefeuille.
 
 ### Contraintes reglementaires
-Regles imposees par les autorites (Retraite Quebec, BSIF) qui limitent l'allocation. Elles visent a proteger les beneficiaires en evitant une concentration excessive ou des prises de risque deraisonnables.
+Regles imposees par les autorites (Retraite Quebec, BSIF, autorites provinciales) pour proteger les beneficiaires. Elles reposent surtout sur la regle de la personne prudente et des limites par emetteur. Dans l'application, les limites d'allocation par groupe viennent de la politique de placement de chaque fonds (profil de fonds), pas d'une regle legale.
+
+### Profil de fonds
+Ensemble des parametres propres a une organisation : actif, passif eventuel, flux annuels, portefeuille de politique, bornes et limites de groupe, hypotheses de marche facultatives. Se sauvegarde et se charge en JSON.
 
 ---
 
@@ -540,8 +543,8 @@ Les 5 dimensions evaluees pour chaque classe d'actifs, sur une echelle de 1 a 5 
 |-----------|--------------|
 | **Durabilite** | Impact environnemental et social de l'actif (criteres ESG, emissions, gouvernance) |
 | **Additionnalite** | Contribution incrementale du financement : est-ce que le capital apporte un changement qui n'aurait pas eu lieu autrement ? |
-| **Disponibilite** | Facilite d'acces au produit sur le marche institutionnel quebecois |
-| **Retombees Quebec** | Benefices economiques et sociaux generes localement (emplois, fiscalite, ecosysteme) |
+| **Disponibilite** | Facilite d'acces au produit sur le marche institutionnel |
+| **Retombees regionales** | Benefices economiques et sociaux generes localement ou dans la region du fonds (emplois, fiscalite, ecosysteme) |
 | **Liquidite** | Facilite de vendre ou racheter la position rapidement sans impact significatif sur le prix |
 
 ### Variante durable

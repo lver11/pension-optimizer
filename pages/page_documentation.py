@@ -40,7 +40,7 @@ with tab_guide:
         st.markdown("### Navigation rapide")
         st.markdown("""
 - [Demarrage](#1-demarrage)
-- [Configuration globale](#2-configuration-globale-sidebar)
+- [Profil du fonds](#2-profil-du-fonds-et-configuration-globale)
 - [Tableau de bord](#3-1-vue-d-ensemble-tableau-de-bord)
 - [Optimisation](#3-2-optimisation-moteur-d-optimisation)
 - [Contraintes](#3-3-optimisation-gestionnaire-de-contraintes)
@@ -56,8 +56,8 @@ with tab_guide:
 - [🌱 Optimisation durable](#3-14-optimisation-durable)
 - [🌱 Rapport durable](#3-15-rapport-durable)
 - [Flux de travail](#4-flux-de-travail-recommande)
-- [Classes d'actifs](#5-classes-d-actifs-disponibles-12)
-- [Contraintes reglementaires](#6-contraintes-reglementaires-du-quebec)
+- [Classes d'actifs](#5-classes-d-actifs-disponibles-17)
+- [Limites de politique](#6-limites-de-politique-de-placement)
         """)
 
     st.markdown(guide_md)

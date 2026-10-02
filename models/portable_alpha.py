@@ -10,7 +10,7 @@ Architecture :
 3. Portefeuille combine = beta + alpha overlay
 
 L'optimiseur maximise le ratio d'information (alpha / tracking error)
-sous les contraintes reglementaires de levier.
+sous des limites de levier configurables.
 """
 
 import numpy as np

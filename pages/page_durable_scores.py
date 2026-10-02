@@ -18,7 +18,7 @@ DIM_LABELS = {
     "durabilite": "Durabilité",
     "additionnalite": "Additionnalité",
     "disponibilite": "Disponibilité",
-    "retombees_qc": "Retombées Qc",
+    "retombees_qc": "Retombées régionales",
     "liquidite": "Liquidité",
 }
 

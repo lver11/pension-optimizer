@@ -1,5 +1,5 @@
 """
-Gestion Actif-Passif (ALM) pour le fonds de pension.
+Gestion Actif-Passif (ALM) - pour les fonds qui ont un passif actuariel (regimes PD).
 """
 
 import streamlit as st
@@ -13,35 +13,45 @@ from config import (
     get_min_weights, get_max_weights, DEFAULT_CURRENT_WEIGHTS,
     PensionFundConfig, ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
+from fund_profile import ensure_session_state, get_active_profile
+from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from models.alm import ALMOptimizer, LiabilityProfile
 from constraints.manager import ConstraintSet
-from constraints.regulatory import QuebecPensionRegulations
+from constraints.regulatory import PolicyLimits
 from visualization.charts import ChartBuilder
 
 
 def render():
     st.title("Gestion actif-passif (ALM)")
 
-    if "returns_data" not in st.session_state or st.session_state.returns_data is None:
-        generator = MarketDataGenerator(seed=42)
-        st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        st.session_state.pension_config = PensionFundConfig()
+    ensure_session_state()
 
     config = st.session_state.get("pension_config", PensionFundConfig())
-    weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+    weights = st.session_state.get("current_weights", get_policy_weights())
     asset_names = get_asset_names_fr()
+    profile = get_active_profile()
 
-    # ---------- Configuration du passif ----------
+    if not profile.a_un_passif:
+        st.info(
+            f"Le profil actif (**{profile.nom}**) n'a pas de passif actuariel. "
+            "L'analyse actif-passif s'applique aux regimes a prestations determinees : "
+            "saisissez une valeur de passif dans la page Profil du fonds pour l'activer."
+        )
+        return
+
+    # ---------- Configuration du passif (valeurs du profil) ----------
     st.sidebar.markdown("### Configuration du passif")
     pv_liabilities = st.sidebar.number_input(
-        "Valeur actuelle du passif (M$)", 100.0, 10000.0,
-        config.valeur_passif / 1e6, 10.0,
+        "Valeur actuelle du passif (M$)", 1.0, 500000.0,
+        float(profile.valeur_passif / 1e6), 10.0,
     ) * 1e6
-    liability_duration = st.sidebar.slider("Duration du passif (annees)", 5.0, 25.0, 15.0, 0.5)
-    discount_rate = st.sidebar.slider("Taux d'actualisation (%)", 2.0, 8.0, 5.0, 0.1) / 100
-    liability_growth = st.sidebar.slider("Croissance du passif (%)", 1.0, 8.0, 3.0, 0.5) / 100
+    liability_duration = st.sidebar.slider(
+        "Duration du passif (annees)", 1.0, 30.0, float(profile.duration_passif), 0.5)
+    discount_rate = st.sidebar.slider(
+        "Taux d'actualisation (%)", 0.0, 10.0, float(profile.taux_actualisation * 100), 0.1) / 100
+    liability_growth = st.sidebar.slider(
+        "Croissance du passif (%)", 0.0, 10.0, float(profile.croissance_passif * 100), 0.5) / 100
 
     liability_profile = LiabilityProfile(
         present_value=pv_liabilities,
@@ -72,7 +82,7 @@ def render():
     surplus = alm.compute_surplus(asset_value)
     duration_gap = alm.compute_duration_gap(weights, asset_value)
 
-    funding_check = QuebecPensionRegulations.funding_policy_check(funded_ratio)
+    funding_check = PolicyLimits.funding_policy_check(funded_ratio)
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Ratio de capitalisation", f"{funded_ratio:.1%}")
@@ -124,7 +134,7 @@ def render():
         constraint_set = ConstraintSet(
             min_weights=get_min_weights(),
             max_weights=get_max_weights(),
-            group_constraints=QuebecPensionRegulations.get_group_constraints(),
+            group_constraints=profile.group_constraints(),
         )
 
         with st.spinner("Optimisation du surplus en cours..."):

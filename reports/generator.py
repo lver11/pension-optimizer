@@ -198,7 +198,7 @@ class ReportGenerator:
             detail_df.to_excel(writer, sheet_name="ESG", index=False, startrow=len(data["Metrique"]) + 3)
 
     def _write_compliance_sheet(self, writer, compliance):
-        """Ecrit la feuille de conformite reglementaire."""
+        """Ecrit la feuille de conformite a la politique de placement."""
         data = {
             "Statut": ["Conforme" if compliance["conforme"] else "Non conforme"],
         }
