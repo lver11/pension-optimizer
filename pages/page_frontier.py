@@ -13,6 +13,8 @@ from config import (
     get_asset_names_fr, get_expected_returns, get_covariance_matrix,
     get_min_weights, get_max_weights, DEFAULT_CURRENT_WEIGHTS, PensionFundConfig,
 )
+from fund_profile import ensure_session_state, get_active_profile
+from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from models.efficient_frontier import EfficientFrontierComputer
 from constraints.manager import ConstraintSet
@@ -24,11 +26,7 @@ from visualization.charts import ChartBuilder
 def render():
     st.title("Frontiere efficiente")
 
-    if "returns_data" not in st.session_state or st.session_state.returns_data is None:
-        generator = MarketDataGenerator(seed=42)
-        st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        st.session_state.pension_config = PensionFundConfig()
+    ensure_session_state()
 
     asset_names = get_asset_names_fr()
     mu = get_expected_returns()
@@ -61,10 +59,11 @@ def render():
     # Contraintes (depuis le gestionnaire ou bornes par defaut)
     constraint_set = None
     if apply_constraints:
-        constraint_set = st.session_state.get("constraint_set", ConstraintSet(
+        constraint_set = st.session_state.get("constraint_set") or ConstraintSet(
             min_weights=get_min_weights(),
             max_weights=get_max_weights(),
-        ))
+            group_constraints=get_active_profile().group_constraints(),
+        )
 
     # Calcul
     if st.button("Calculer la frontiere", type="primary", use_container_width=True):
@@ -115,7 +114,7 @@ def render():
     if "frontier_data" in st.session_state:
         frontier_df = st.session_state.frontier_data
 
-        current_weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+        current_weights = st.session_state.get("current_weights", get_policy_weights())
         curr_ret = current_weights @ mu
         curr_vol = np.sqrt(current_weights @ cov_matrix @ current_weights)
         current_portfolio = (curr_ret, curr_vol) if show_current else None

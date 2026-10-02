@@ -1,17 +1,23 @@
 """
-Contraintes reglementaires specifiques au Quebec pour les fonds de pension.
-Inclut les regles pour les strategies avec levier (alpha portable).
+Limites de politique de placement par defaut et regles pour les strategies avec levier.
+
+Important : ces valeurs sont des limites internes ILLUSTRATIVES, pas des exigences
+reglementaires. Les lois sur les regimes de retraite (Quebec, federal, autres provinces)
+reposent surtout sur la regle de la personne prudente et des limites par emetteur ;
+chaque fonds definit ses propres limites dans sa politique de placement, que l'on
+saisit dans le profil de fonds (page Profil du fonds).
 """
 
 import numpy as np
 from typing import Dict, List, Tuple
 from constraints.manager import GroupConstraint, LeveragedConstraintSet
+from config import get_category_indices
 
 
-class QuebecPensionRegulations:
-    """Contraintes reglementaires des fonds de pension du Quebec."""
+class PolicyLimits:
+    """Limites de politique de placement par defaut (illustratives, non reglementaires)."""
 
-    # Limites reglementaires (avec defauts sensibles)
+    # Limites par defaut
     MAX_EQUITY_TOTAL = 0.70
     MAX_PRIVATE_EQUITY = 0.20
     MAX_ALTERNATIVES = 0.40  # PE + Infra + Immobilier
@@ -21,20 +27,20 @@ class QuebecPensionRegulations:
     MAX_FOREIGN_CONTENT = 0.80
     MIN_FUNDED_RATIO_ALERT = 0.80
 
-    # Indices des classes d'actifs (selon ASSET_CLASSES_ORDER dans config)
-    EQUITY_INDICES = [0, 1, 2, 3, 13]      # Actions CDN, US, EAFE, Emergentes, ACWI
-    BOND_INDICES = [4, 5, 6, 14, 16]        # Oblig Gov, Corp, Inflation, Dette EM, + Obligations HY
-    ALTERNATIVE_INDICES = [7, 8, 9, 10, 15]  # Immobilier, Infrastructure, PE, Rendement absolu, + Dette privee
+    # Indices des classes d'actifs, derives des categories definies dans config
+    EQUITY_INDICES = get_category_indices("actions")            # Actions CDN, US, EAFE, EM, ACWI
+    BOND_INDICES = get_category_indices("obligations")          # Gov, Corp, Inflation, Dette EM, HY
+    ALTERNATIVE_INDICES = get_category_indices("alternatifs")   # Immo, Infra, PE, Rend. absolu, Dette privee
     PE_INDEX = [9]                          # Capital investissement
     ABSOLUTE_RETURN_INDEX = [10]            # Rendement absolu
     COMMODITY_INDEX = [11]                  # Matieres premieres
-    CASH_INDEX = [12]                       # Encaisse
+    CASH_INDEX = get_category_indices("liquidites")  # Encaisse
     DOMESTIC_INDICES = [0, 4, 5, 6]        # Actions CDN + Obligations CDN
     FOREIGN_INDICES = [1, 2, 3, 13, 14, 15, 16]  # Actions intl, ACWI, Dette EM, + Dette privee, Obligations HY
 
     @classmethod
     def get_group_constraints(cls) -> List[GroupConstraint]:
-        """Retourne les contraintes reglementaires standard du Quebec."""
+        """Retourne les limites de groupe par defaut (illustratives)."""
         return [
             GroupConstraint(
                 name_fr="Actions totales <= 70%",
@@ -74,7 +80,7 @@ class QuebecPensionRegulations:
         weights: np.ndarray,
         asset_names: List[str],
     ) -> Tuple[bool, List[str]]:
-        """Valide la conformite reglementaire de l'allocation."""
+        """Valide l'allocation par rapport aux limites par defaut."""
         violations = []
         tol = 1e-6
 
@@ -152,14 +158,15 @@ class QuebecPensionRegulations:
 
 
 class PortableAlphaRegulations:
-    """Contraintes reglementaires pour les strategies d'alpha portable.
+    """Limites par defaut pour les strategies d'alpha portable.
 
     L'alpha portable utilise le levier via des positions courtes et des
-    instruments derives. Les caisses de retraite du Quebec sont soumises
-    a des limites specifiques sur l'utilisation du levier.
+    instruments derives. Les limites ci-dessous sont des valeurs internes
+    par defaut, a ajuster selon la politique de placement et le cadre
+    legal applicable a chaque fonds.
     """
 
-    # Limites reglementaires pour les strategies avec levier
+    # Limites par defaut pour les strategies avec levier
     MAX_GROSS_LEVERAGE = 2.0       # Levier brut max 200%
     MAX_SHORT_EXPOSURE = 0.50      # Exposition courte max 50% de l'actif net
     MAX_SHORT_PER_ASSET = 0.15     # Position courte max par actif 15%
@@ -178,21 +185,21 @@ class PortableAlphaRegulations:
         return [
             GroupConstraint(
                 name_fr="Actions totales (nettes) <= 70%",
-                asset_indices=QuebecPensionRegulations.EQUITY_INDICES,
+                asset_indices=PolicyLimits.EQUITY_INDICES,
                 min_allocation=-0.20,  # Short equity autorise
                 max_allocation=0.70,
             ),
             GroupConstraint(
                 name_fr="Obligations totales (nettes)",
-                asset_indices=QuebecPensionRegulations.BOND_INDICES,
+                asset_indices=PolicyLimits.BOND_INDICES,
                 min_allocation=-0.15,
                 max_allocation=0.70,
             ),
             GroupConstraint(
                 name_fr="Actifs alternatifs <= 40% (long-only)",
-                asset_indices=QuebecPensionRegulations.ALTERNATIVE_INDICES,
+                asset_indices=PolicyLimits.ALTERNATIVE_INDICES,
                 min_allocation=0.0,
-                max_allocation=QuebecPensionRegulations.MAX_ALTERNATIVES,
+                max_allocation=PolicyLimits.MAX_ALTERNATIVES,
             ),
         ]
 
@@ -202,7 +209,7 @@ class PortableAlphaRegulations:
         weights: np.ndarray,
         asset_names: List[str],
     ) -> Tuple[bool, List[str]]:
-        """Valide la conformite reglementaire d'une allocation avec levier."""
+        """Valide une allocation avec levier par rapport aux limites par defaut."""
         violations = []
         tol = 1e-6
 
@@ -210,7 +217,7 @@ class PortableAlphaRegulations:
         gross = np.sum(np.abs(weights))
         if gross > cls.MAX_GROSS_LEVERAGE + tol:
             violations.append(
-                f"Levier brut ({gross:.1%}) excede la limite reglementaire de {cls.MAX_GROSS_LEVERAGE:.0%}"
+                f"Levier brut ({gross:.1%}) excede la limite de {cls.MAX_GROSS_LEVERAGE:.0%}"
             )
 
         # Exposition courte totale
@@ -233,17 +240,17 @@ class PortableAlphaRegulations:
                     )
 
         # Actions nettes
-        equity_net = np.sum(weights[QuebecPensionRegulations.EQUITY_INDICES])
-        if equity_net > QuebecPensionRegulations.MAX_EQUITY_TOTAL + tol:
+        equity_net = np.sum(weights[PolicyLimits.EQUITY_INDICES])
+        if equity_net > PolicyLimits.MAX_EQUITY_TOTAL + tol:
             violations.append(
-                f"Actions nettes ({equity_net:.1%}) excedent la limite de {QuebecPensionRegulations.MAX_EQUITY_TOTAL:.0%}"
+                f"Actions nettes ({equity_net:.1%}) excedent la limite de {PolicyLimits.MAX_EQUITY_TOTAL:.0%}"
             )
 
         # Alternatives (long-only)
-        alt_long = np.sum(np.maximum(weights[QuebecPensionRegulations.ALTERNATIVE_INDICES], 0))
-        if alt_long > QuebecPensionRegulations.MAX_ALTERNATIVES + tol:
+        alt_long = np.sum(np.maximum(weights[PolicyLimits.ALTERNATIVE_INDICES], 0))
+        if alt_long > PolicyLimits.MAX_ALTERNATIVES + tol:
             violations.append(
-                f"Actifs alternatifs long ({alt_long:.1%}) excedent {QuebecPensionRegulations.MAX_ALTERNATIVES:.0%}"
+                f"Actifs alternatifs long ({alt_long:.1%}) excedent {PolicyLimits.MAX_ALTERNATIVES:.0%}"
             )
 
         return len(violations) == 0, violations
@@ -280,3 +287,7 @@ class PortableAlphaRegulations:
             "cout_total_bps": total_cost * 10000,
             "spread_financement": financing_spread,
         }
+
+
+# Ancien nom conserve pour compatibilite
+QuebecPensionRegulations = PolicyLimits

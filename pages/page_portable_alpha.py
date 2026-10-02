@@ -14,7 +14,7 @@ if ROOT_DIR not in sys.path:
     sys.path.insert(0, ROOT_DIR)
 
 from config import (
-    ASSET_CLASSES_ORDER, ASSET_DEFAULTS, BENCHMARK_PORTFOLIOS,
+    ASSET_CLASSES_ORDER, ASSET_DEFAULTS, get_benchmark_portfolios,
     ALPHA_ELIGIBLE_SHORT, LABELS_FR,
     get_asset_names_fr, get_expected_returns, get_covariance_matrix,
     get_esg_scores, PensionFundConfig,
@@ -22,6 +22,7 @@ from config import (
 from models.portable_alpha import PortableAlphaOptimizer, PortableAlphaResult
 from constraints.manager import ConstraintManager
 from constraints.regulatory import PortableAlphaRegulations
+from fund_profile import ensure_session_state
 from visualization.charts import ChartBuilder
 
 
@@ -32,6 +33,9 @@ un benchmark, tandis que l'overlay alpha genere du rendement excedentaire via de
 positions long/short. Le levier est controle par les parametres de la strategie.
 """)
 
+ensure_session_state()
+benchmarks = get_benchmark_portfolios()
+
 # ============================================================
 # Parametres dans la sidebar
 # ============================================================
@@ -41,9 +45,9 @@ with st.sidebar:
     # Choix du benchmark beta
     benchmark_key = st.selectbox(
         "Benchmark beta",
-        list(BENCHMARK_PORTFOLIOS.keys()),
-        format_func=lambda k: BENCHMARK_PORTFOLIOS[k]["nom_fr"],
-        index=0,
+        list(benchmarks.keys()),
+        format_func=lambda k: benchmarks[k]["nom_fr"],
+        index=list(benchmarks.keys()).index("politique_placement"),
     )
 
     # Strategie d'optimisation
@@ -108,8 +112,8 @@ with st.sidebar:
 asset_names = get_asset_names_fr()
 mu = get_expected_returns()
 sigma = get_covariance_matrix()
-benchmark_weights = BENCHMARK_PORTFOLIOS[benchmark_key]["weights"]
-benchmark_name = BENCHMARK_PORTFOLIOS[benchmark_key]["nom_fr"]
+benchmark_weights = benchmarks[benchmark_key]["weights"]
+benchmark_name = benchmarks[benchmark_key]["nom_fr"]
 esg_scores = get_esg_scores() if use_esg else None
 
 # Config du fonds

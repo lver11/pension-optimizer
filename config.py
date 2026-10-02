@@ -57,8 +57,8 @@ ASSET_CLASSES_ORDER = [
 ]
 
 ASSET_DEFAULTS: Dict[AssetClass, AssetClassConfig] = {
-    AssetClass.ACTIONS_CDN: AssetClassConfig(AssetClass.ACTIONS_CDN, "Actions canadiennes", 0.075, 0.16, 0.95, 65.0, 0.00, 0.30, False),
-    AssetClass.ACTIONS_US: AssetClassConfig(AssetClass.ACTIONS_US, "Actions americaines", 0.080, 0.17, 0.98, 60.0, 0.00, 0.30, False),
+    AssetClass.ACTIONS_CDN: AssetClassConfig(AssetClass.ACTIONS_CDN, "Actions canadiennes", 0.075, 0.16, 0.95, 65.0, 0.05, 0.30, False),
+    AssetClass.ACTIONS_US: AssetClassConfig(AssetClass.ACTIONS_US, "Actions americaines", 0.080, 0.17, 0.98, 60.0, 0.05, 0.30, False),
     AssetClass.ACTIONS_EAFE: AssetClassConfig(AssetClass.ACTIONS_EAFE, "Actions EAFE", 0.070, 0.18, 0.90, 70.0, 0.00, 0.20, False),
     AssetClass.ACTIONS_EMERGENTES: AssetClassConfig(AssetClass.ACTIONS_EMERGENTES, "Actions emergentes", 0.090, 0.22, 0.75, 45.0, 0.00, 0.15, False),
     AssetClass.OBLIGATIONS_GOV_CDN: AssetClassConfig(AssetClass.OBLIGATIONS_GOV_CDN, "Obligations gouvernementales CDN", 0.035, 0.06, 1.00, 80.0, 0.10, 0.40, False, 7.5),
@@ -69,10 +69,10 @@ ASSET_DEFAULTS: Dict[AssetClass, AssetClassConfig] = {
     AssetClass.CAPITAL_INVESTISSEMENT: AssetClassConfig(AssetClass.CAPITAL_INVESTISSEMENT, "Capital investissement", 0.100, 0.20, 0.10, 50.0, 0.00, 0.15, True),
     AssetClass.RENDEMENT_ABSOLU: AssetClassConfig(AssetClass.RENDEMENT_ABSOLU, "Rendement absolu", 0.055, 0.08, 0.50, 50.0, 0.00, 0.15, True),
     AssetClass.MATIERES_PREMIERES: AssetClassConfig(AssetClass.MATIERES_PREMIERES, "Matieres premieres", 0.040, 0.18, 0.80, 35.0, 0.00, 0.10, False),
-    AssetClass.ENCAISSE: AssetClassConfig(AssetClass.ENCAISSE, "Encaisse", 0.025, 0.01, 1.00, 75.0, 0.00, 0.10, False, 0.25),
+    AssetClass.ENCAISSE: AssetClassConfig(AssetClass.ENCAISSE, "Encaisse", 0.025, 0.01, 1.00, 75.0, 0.02, 0.10, False, 0.25),
     AssetClass.ACTIONS_ACWI: AssetClassConfig(
         AssetClass.ACTIONS_ACWI, "Actions MSCI ACWI",
-        0.078, 0.16, 0.95, 58.0, 0.00, 0.60, False
+        0.078, 0.16, 0.95, 58.0, 0.00, 0.40, False
     ),
     AssetClass.DETTE_EMERGENTE: AssetClassConfig(
         AssetClass.DETTE_EMERGENTE, "Dette pays emergents",
@@ -87,6 +87,53 @@ ASSET_DEFAULTS: Dict[AssetClass, AssetClassConfig] = {
         0.055, 0.09, 0.80, 48.0, 0.00, 0.15, False, 4.5
     ),
 }
+
+# Categories d'actifs (utilisees pour les limites de groupe de la politique de placement)
+ASSET_CATEGORIES: Dict[AssetClass, str] = {
+    AssetClass.ACTIONS_CDN: "actions",
+    AssetClass.ACTIONS_US: "actions",
+    AssetClass.ACTIONS_EAFE: "actions",
+    AssetClass.ACTIONS_EMERGENTES: "actions",
+    AssetClass.ACTIONS_ACWI: "actions",
+    AssetClass.OBLIGATIONS_GOV_CDN: "obligations",
+    AssetClass.OBLIGATIONS_CORP: "obligations",
+    AssetClass.OBLIGATIONS_INFLATION: "obligations",
+    AssetClass.DETTE_EMERGENTE: "obligations",
+    AssetClass.OBLIGATIONS_HY: "obligations",
+    AssetClass.IMMOBILIER: "alternatifs",
+    AssetClass.INFRASTRUCTURE: "alternatifs",
+    AssetClass.CAPITAL_INVESTISSEMENT: "alternatifs",
+    AssetClass.RENDEMENT_ABSOLU: "alternatifs",
+    AssetClass.DETTE_PRIVEE: "alternatifs",
+    AssetClass.MATIERES_PREMIERES: "matieres_premieres",
+    AssetClass.ENCAISSE: "liquidites",
+}
+
+CATEGORY_LABELS_FR = {
+    "actions": "Actions",
+    "obligations": "Titres a revenu fixe",
+    "alternatifs": "Placements alternatifs",
+    "matieres_premieres": "Matieres premieres",
+    "liquidites": "Liquidites",
+}
+
+
+def get_category_indices(category: str) -> List[int]:
+    """Indices (dans ASSET_CLASSES_ORDER) des classes appartenant a une categorie."""
+    return [i for i, ac in enumerate(ASSET_CLASSES_ORDER) if ASSET_CATEGORIES[ac] == category]
+
+
+def asset_code_to_index(code: str) -> int:
+    """Convertit un code de classe d'actifs (ex. 'actions_acwi') en indice."""
+    for i, ac in enumerate(ASSET_CLASSES_ORDER):
+        if ac.value == code:
+            return i
+    raise KeyError(f"Classe d'actifs inconnue: {code}")
+
+
+def get_asset_codes() -> List[str]:
+    return [ac.value for ac in ASSET_CLASSES_ORDER]
+
 
 DEFAULT_CORRELATION_MATRIX = np.array([
     #  CDN   US   EAFE  EM   GovB CorpB InflB Immo Infra  PE   RA  Comm  Cash ACWI  EMD   DP    HY
@@ -109,41 +156,18 @@ DEFAULT_CORRELATION_MATRIX = np.array([
     [ 0.40, 0.50, 0.35, 0.40, 0.10, 0.60, 0.10, 0.25, 0.25, 0.35, 0.35, 0.25, 0.05, 0.45, 0.55, 0.45, 1.00],
 ])
 
-# Portefeuille de reference Fondaction (politique de placement), mappe sur les 17 classes.
-# Hypotheses de mapping :
-#  - Obligations canadiennes 25 % (FTSE Univers) : ~1/3 corporatif, ~2/3 gouvernemental
-#  - Obligations gouvernementales 10 % -> Obligations gouvernementales CDN
-#  - Obligations mondiales vertes 5 % -> Obligations corporatives (approximation)
-#  - Dette pays emergents 6 %, Actions mondiales ACWI 46 %, Rendement absolu 8 %
-#  - Marche monetaire 0 % ; aucune classe privee/immobiliere dans la reference
 DEFAULT_CURRENT_WEIGHTS = np.array([
-    0.0,                      # Actions CDN (incluses dans ACWI)
-    0.0,                      # Actions US
-    0.0,                      # Actions EAFE
-    0.0,                      # Actions emergentes
-    0.10 + 0.25 * 2 / 3,      # Obligations gouvernementales CDN
-    0.25 / 3 + 0.05,          # Obligations corporatives (+ vertes)
-    0.0,                      # Obligations indexees inflation
-    0.0,                      # Immobilier
-    0.0,                      # Infrastructure
-    0.0,                      # Capital investissement
-    0.08,                     # Rendement absolu
-    0.0,                      # Matieres premieres
-    0.0,                      # Encaisse
-    0.46,                     # Actions MSCI ACWI
-    0.06,                     # Dette pays emergents
-    0.0,                      # Dette privee
-    0.0,                      # Obligations HY
+    0.12, 0.14, 0.08, 0.05, 0.19, 0.10, 0.05, 0.07, 0.07, 0.05, 0.03, 0.03, 0.02, 0.00, 0.00, 0.00, 0.00,
 ])
 
 
 @dataclass
 class PensionFundConfig:
-    nom: str = "Caisse de retraite"
+    nom: str = "Fonds de pension"
     horizon_annees: int = 20
     taux_actualisation: float = 0.05
-    valeur_actif: float = 1_900_000_000.0
-    valeur_passif: float = 1_900_000_000.0  # utilise par la page ALM
+    valeur_actif: float = 1_000_000_000.0
+    valeur_passif: float = 1_000_000_000.0
     taux_inflation_cible: float = 0.02
     niveau_confiance_var: float = 0.95
     niveau_confiance_cvar: float = 0.95
@@ -152,7 +176,7 @@ class PensionFundConfig:
 
 
 LABELS_FR = {
-    "app_title": "Optimiseur de Portefeuille - Caisse de Retraite",
+    "app_title": "Optimiseur de portefeuille institutionnel",
     "dashboard": "Tableau de bord",
     "optimization": "Moteur d optimisation",
     "constraints": "Gestionnaire de contraintes",
@@ -206,11 +230,44 @@ def get_covariance_matrix() -> np.ndarray:
     D = np.diag(vols)
     return D @ DEFAULT_CORRELATION_MATRIX @ D
 
+def _active_profile():
+    """Profil de fonds actif (session Streamlit), ou None hors application."""
+    try:
+        import streamlit as st
+        return st.session_state.get("fund_profile")
+    except Exception:
+        return None
+
 def get_min_weights() -> np.ndarray:
+    profile = _active_profile()
+    if profile is not None:
+        return profile.min_array()
     return np.array([ASSET_DEFAULTS[ac].min_allocation for ac in ASSET_CLASSES_ORDER])
 
 def get_max_weights() -> np.ndarray:
+    profile = _active_profile()
+    if profile is not None:
+        return profile.max_array()
     return np.array([ASSET_DEFAULTS[ac].max_allocation for ac in ASSET_CLASSES_ORDER])
+
+def get_policy_weights() -> np.ndarray:
+    """Poids du portefeuille de politique du profil actif (defaut generique sinon)."""
+    profile = _active_profile()
+    if profile is not None:
+        return profile.weights_array()
+    return DEFAULT_CURRENT_WEIGHTS.copy()
+
+def get_benchmark_portfolios() -> Dict[str, Dict]:
+    """Portefeuilles de reference, dont la politique de placement du profil actif."""
+    benchmarks = {k: {"nom_fr": v["nom_fr"], "weights": v["weights"].copy()}
+                  for k, v in BENCHMARK_PORTFOLIOS.items()}
+    profile = _active_profile()
+    if profile is not None:
+        benchmarks["politique_placement"] = {
+            "nom_fr": f"Politique de placement ({profile.nom})",
+            "weights": profile.weights_array(),
+        }
+    return benchmarks
 
 def get_esg_scores() -> np.ndarray:
     return np.array([ASSET_DEFAULTS[ac].esg_score for ac in ASSET_CLASSES_ORDER])

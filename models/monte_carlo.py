@@ -59,6 +59,7 @@ class MonteCarloSimulator:
         annual_contribution: float = 40_000_000.0,
         annual_benefit: float = 57_000_000.0,
         benefit_growth_rate: float = 0.03,
+        contribution_growth_rate: float = 0.02,
         n_simulations: int = 10_000,
         seed: int = 42,
         # Legacy parameters (ignored)
@@ -72,6 +73,7 @@ class MonteCarloSimulator:
         self.annual_contribution = annual_contribution
         self.annual_benefit = annual_benefit
         self.benefit_growth_rate = benefit_growth_rate
+        self.contribution_growth_rate = contribution_growth_rate
         self.n_sims = n_simulations
         self.rng = np.random.default_rng(seed)
 
@@ -105,7 +107,7 @@ class MonteCarloSimulator:
             return_paths[:, t] = port_returns
 
             # Contributions et prestations (croissantes)
-            contrib_t = self.annual_contribution * (1 + 0.02) ** t
+            contrib_t = self.annual_contribution * (1 + self.contribution_growth_rate) ** t
             benefit_t = self.annual_benefit * (1 + self.benefit_growth_rate) ** t
 
             # Evolution de l'actif
@@ -138,6 +140,7 @@ class MonteCarloSimulator:
                 annual_contribution=self.annual_contribution,
                 annual_benefit=self.annual_benefit,
                 benefit_growth_rate=self.benefit_growth_rate,
+                contribution_growth_rate=self.contribution_growth_rate,
                 n_simulations=self.n_sims,
                 seed=self.rng.integers(0, 100000),
             )

@@ -1,7 +1,9 @@
 """
-Optimiseur de Portefeuille Institutionnel - Caisse de Retraite
+Optimiseur de portefeuille institutionnel
 Application Streamlit multi-pages pour l'optimisation de portefeuille
-multi-classes d'actifs d'un fonds de pension.
+multi-classes d'actifs de tout fonds institutionnel (regime PD ou CD,
+fondation, fonds de travailleurs...). Les parametres propres au fonds
+sont regroupes dans un profil (page Profil du fonds).
 """
 
 import streamlit as st
@@ -36,7 +38,7 @@ def _reset_session_if_universe_changed():
 
 def main():
     st.set_page_config(
-        page_title="Optimiseur de Portefeuille - Caisse de Retraite",
+        page_title="Optimiseur de portefeuille institutionnel",
         page_icon="\U0001F4CA",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -76,34 +78,42 @@ def main():
     </style>
     """, unsafe_allow_html=True)
 
+    # Profil de fonds actif (profil type par defaut au premier chargement)
+    from fund_profile import ensure_session_state, get_active_profile, TYPES_FONDS
+    ensure_session_state()
+    profile = get_active_profile()
+
     # Sidebar - Configuration globale
     with st.sidebar:
-        st.markdown("## \U0001F3E6 Caisse de Retraite")
+        st.markdown(f"## \U0001F3E6 {profile.nom}")
+        st.caption(TYPES_FONDS.get(profile.type_fonds, profile.type_fonds)
+                   + " - modifier dans Profil du fonds")
         st.markdown("---")
 
-        # Parametres globaux
+        # Parametres globaux (lies au profil actif)
         st.markdown("### Parametres globaux")
 
-        if "pension_config" not in st.session_state:
-            from config import PensionFundConfig
-            st.session_state.pension_config = PensionFundConfig()
-
-        config = st.session_state.pension_config
-
-        config.valeur_actif = st.number_input(
+        profile.valeur_actif = st.number_input(
             "Valeur de l'actif (M$)",
-            100.0, 50000.0, config.valeur_actif / 1e6, 50.0,
+            0.1, 1_000_000.0, float(profile.valeur_actif / 1e6), 10.0,
         ) * 1e6
 
-        config.taux_sans_risque = st.slider(
-            "Taux sans risque (%)", 0.0, 8.0,
-            config.taux_sans_risque * 100, 0.1,
+        profile.taux_sans_risque = st.slider(
+            "Taux sans risque (%)", 0.0, 15.0,
+            float(profile.taux_sans_risque * 100), 0.1,
         ) / 100
 
-        config.horizon_annees = st.slider(
-            "Horizon (annees)", 5, 40, config.horizon_annees,
+        profile.horizon_annees = st.slider(
+            "Horizon (annees)", 1, 60, int(profile.horizon_annees),
         )
 
+        # Conserver les autres champs eventuellement modifies par les pages
+        config = st.session_state.get("pension_config") or profile.to_pension_config()
+        config.nom = profile.nom
+        config.valeur_actif = profile.valeur_actif
+        config.taux_sans_risque = profile.taux_sans_risque
+        config.horizon_annees = int(profile.horizon_annees)
+        config.valeur_passif = profile.valeur_passif or 0.0
         st.session_state.pension_config = config
 
         st.markdown("---")
@@ -113,7 +123,8 @@ def main():
 
     pages = {
         "Vue d'ensemble": [
-            st.Page(os.path.join(pages_dir, "page_dashboard.py"), title="Tableau de bord", icon=":material/dashboard:"),
+            st.Page(os.path.join(pages_dir, "page_dashboard.py"), title="Tableau de bord", icon=":material/dashboard:", default=True),
+            st.Page(os.path.join(pages_dir, "page_profil.py"), title="Profil du fonds", icon=":material/account_balance:"),
             st.Page(os.path.join(pages_dir, "page_data_source.py"), title="Source de donnees", icon=":material/database:"),
         ],
         "Optimisation": [
@@ -124,6 +135,7 @@ def main():
         "Analyse de risque": [
             st.Page(os.path.join(pages_dir, "page_risk.py"), title="Analytique de risque", icon=":material/warning:"),
             st.Page(os.path.join(pages_dir, "page_monte_carlo.py"), title="Simulation Monte Carlo", icon=":material/casino:"),
+            st.Page(os.path.join(pages_dir, "page_alm.py"), title="Gestion actif-passif", icon=":material/balance:"),
         ],
         "Strategies": [
             st.Page(os.path.join(pages_dir, "page_portable_alpha.py"), title="Alpha portable", icon=":material/trending_up:"),

@@ -96,8 +96,8 @@ class TestWeights:
     def test_current_weights_sum_to_1(self):
         assert abs(DEFAULT_CURRENT_WEIGHTS.sum() - 1.0) < 1e-9
 
-    def test_emd_default_weight_matches_reference_portfolio(self):
-        assert abs(DEFAULT_CURRENT_WEIGHTS[14] - 0.06) < 1e-9
+    def test_emd_default_weight_zero(self):
+        assert DEFAULT_CURRENT_WEIGHTS[14] == 0.0
 
     @pytest.mark.parametrize("key,expected_len", [
         ("60_40_equilibre", N),

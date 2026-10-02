@@ -10,19 +10,23 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config import (
     get_asset_names_fr, get_min_weights, get_max_weights,
-    get_esg_scores, DEFAULT_CURRENT_WEIGHTS, PensionFundConfig,
+    get_esg_scores, get_liquidity_scores, get_policy_weights, PensionFundConfig,
     ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
+from fund_profile import ensure_session_state
+from config import get_policy_weights
 from constraints.manager import ConstraintManager, ConstraintSet, GroupConstraint
 from constraints.esg import ESGConstraintEngine
+from fund_profile import get_active_profile
 
 
 def render():
     st.title("Gestionnaire de contraintes")
+    ensure_session_state()
 
     asset_names = get_asset_names_fr()
     n_assets = len(asset_names)
-    current_weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS).copy()
+    current_weights = st.session_state.get("current_weights", get_policy_weights()).copy()
 
     # ---------- Portefeuille actuel ----------
     st.markdown("### Portefeuille actuel")
@@ -60,8 +64,8 @@ def render():
     if btn2.button("Appliquer", type="primary", help="Sauvegarder les poids tels quels"):
         st.session_state.current_weights = edited_weights
         st.rerun()
-    if btn3.button("Reset", help="Revenir aux poids par defaut"):
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
+    if btn3.button("Reset", help="Revenir au portefeuille de politique du profil"):
+        st.session_state.current_weights = get_policy_weights()
         st.rerun()
 
     current_weights = edited_weights
@@ -92,21 +96,26 @@ def render():
 
     # ---------- Contraintes de groupe ----------
     st.markdown("### Contraintes de groupe")
+    st.caption(
+        "Limites de la politique de placement du profil de fonds actif. "
+        "Modifiez-les ici pour cette session, ou de facon permanente dans la page Profil du fonds."
+    )
 
-    col1, col2 = st.columns(2)
-    with col1:
-        max_equity = st.slider("Actions totales (max %)", 0, 100, 70) / 100
-        max_alternatives = st.slider("Actifs alternatifs (max %)", 0, 100, 40) / 100
-    with col2:
-        max_pe = st.slider("Capital investissement (max %)", 0, 100, 20) / 100
-        min_bonds = st.slider("Obligations totales (min %)", 0, 100, 10) / 100
-
-    group_constraints = [
-        GroupConstraint("Actions totales", [0, 1, 2, 3], 0.0, max_equity),
-        GroupConstraint("Actifs alternatifs", [7, 8, 9, 10], 0.0, max_alternatives),
-        GroupConstraint("Capital investissement", [9], 0.0, max_pe),
-        GroupConstraint("Obligations totales", [4, 5, 6], min_bonds, 0.70),
-    ]
+    profile = get_active_profile()
+    group_constraints = []
+    for j, gc in enumerate(profile.group_constraints()):
+        members = ", ".join(asset_names[i] for i in gc.asset_indices)
+        col1, col2, col3 = st.columns([3, 2, 2])
+        col1.markdown(f"**{gc.name_fr}**  \n<small>{members}</small>", unsafe_allow_html=True)
+        g_min = col2.number_input(
+            "Min (%)", 0.0, 100.0, float(gc.min_allocation * 100), 1.0, key=f"gmin_{j}",
+        ) / 100
+        g_max = col3.number_input(
+            "Max (%)", 0.0, 100.0, float(gc.max_allocation * 100), 1.0, key=f"gmax_{j}",
+        ) / 100
+        group_constraints.append(GroupConstraint(gc.name_fr, gc.asset_indices, g_min, g_max))
+    if not group_constraints:
+        st.info("Aucune limite de groupe dans le profil actif.")
 
     st.divider()
 
@@ -142,7 +151,16 @@ def render():
 
     # ---------- Contrainte de liquidite ----------
     st.markdown("### Contrainte de liquidite")
-    min_liquid = st.slider("Minimum en actifs liquides (%)", 0, 30, 5) / 100
+    min_liquid = st.slider("Minimum en actifs liquides (%)", 0, 100, 0) / 100
+    liquid_indices = [i for i, s in enumerate(get_liquidity_scores()) if s >= 0.75]
+    st.caption(
+        "Actifs liquides (score de liquidite >= 0,75) : "
+        + ", ".join(asset_names[i] for i in liquid_indices)
+    )
+    if min_liquid > 0:
+        group_constraints.append(
+            GroupConstraint("Actifs liquides", liquid_indices, min_liquid, 1.0)
+        )
 
     # ---------- Contrainte de rotation ----------
     st.markdown("### Contrainte de rotation")

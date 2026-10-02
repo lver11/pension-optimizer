@@ -1,6 +1,8 @@
 # Guide d'utilisation - Optimiseur de Portefeuille Institutionnel
 
-## Caisse de Retraite - Application Streamlit
+## Application Streamlit pour tout fonds institutionnel
+
+Regimes de retraite a prestations ou a cotisations determinees, fondations, fonds de travailleurs : les parametres propres a chaque organisation sont regroupes dans un **profil de fonds**.
 
 ---
 
@@ -27,21 +29,31 @@ Le code source est sur GitHub : `lver11/pension-optimizer`.
 
 ---
 
-## 2. Configuration globale (sidebar)
+## 2. Profil du fonds et configuration globale
 
-La sidebar gauche est presente sur **toutes les pages**. Elle contient :
+### Profil du fonds (page Vue d'ensemble > Profil du fonds)
 
-| Parametre | Description | Defaut |
-|-----------|-------------|--------|
-| Valeur de l'actif (M$) | Valeur marchande totale des actifs du fonds | 1 000 M$ |
-| Valeur du passif (M$) | Valeur actualisee des obligations futures | 950 M$ |
-| Taux sans risque (%) | Taux de reference pour le calcul des ratios | 2.5% |
-| Horizon (annees) | Horizon de placement du fonds | 20 ans |
+Le profil contient tout ce qui distingue votre fonds. Toutes les pages l'utilisent.
 
-**Indicateur de capitalisation** : affiche en temps reel le ratio actif/passif avec un code couleur :
-- Vert (>= 100%) : capitalisation integrale
-- Jaune (85-100%) : surveillance
-- Rouge (< 85%) : situation critique
+| Element | Contenu |
+|---------|---------|
+| Identification | Nom, type de fonds (PD, CD, fondation, fonds de travailleurs, autre), notes |
+| Bilan | Valeur de l'actif ; passif actuariel facultatif (valeur, duration, taux d'actualisation, croissance) |
+| Marche et horizon | Taux sans risque, horizon de placement |
+| Flux annuels | Entrees (cotisations, dons, souscriptions) et sorties (prestations, decaissements, rachats), avec leur croissance |
+| Portefeuille de politique | Poids cibles par classe d'actifs, bornes min/max |
+| Limites de groupe | Limites de la politique de placement (ex. actions totales <= 70 %), par categorie ou par classe |
+| Hypotheses de marche | Facultatif : rendements et volatilites propres au fonds |
+
+**Profils types fournis** (valeurs illustratives a remplacer) : caisse PD generique (profil par defaut), caisse PD mature orientee LDI, regime CD fonds equilibre, fondation / fonds de dotation, exemple de fonds de travailleurs.
+
+**Sauvegarde** : bouton *Exporter le profil actif (JSON)* ; pour le recharger plus tard, *Importer un profil (JSON)*. Le profil vit dans la session du navigateur : exportez-le avant de fermer l'onglet.
+
+Le profil est valide avant d'etre applique : les poids doivent totaliser 100 %, les bornes doivent permettre au moins une allocation, et l'application signale si le portefeuille de politique viole ses propres bornes ou limites.
+
+### Sidebar
+
+La sidebar affiche le profil actif et permet d'ajuster rapidement, pour la session, la valeur de l'actif, le taux sans risque et l'horizon.
 
 ### Source de donnees
 
@@ -103,7 +115,7 @@ L'application comporte 15 pages organisees en 6 sections.
 **Etape 2 - Configurer les parametres** :
 
 - **Methode de covariance** : Ledoit-Wolf (recommande, regularise), Sample (classique), EWMA (reactive aux donnees recentes)
-- **Contraintes reglementaires** : cocher pour appliquer les limites du Quebec (actions <= 70%, alternatives <= 40%, etc.)
+- **Appliquer les contraintes** : bornes et limites de groupe du profil de fonds (ou celles sauvegardees dans le Gestionnaire de contraintes)
 - Parametres specifiques selon le modele choisi (voir ci-dessous)
 
 **Parametres par modele** :
@@ -143,13 +155,9 @@ L'application comporte 15 pages organisees en 6 sections.
 - Pour chaque classe d'actifs (12 au total), definir un poids minimum et maximum
 - Exemple : Actions canadiennes entre 5% et 30%
 
-**Contraintes de groupe** :
-- Actions totales <= 70%
-- Actifs alternatifs <= 40%
-- Capital investissement <= 20%
-- Obligations >= 10%
+**Contraintes de groupe** : reprises des limites du profil de fonds actif, modifiables pour la session. Les categories regroupent toutes les classes concernees (ex. *Actions* inclut les actions canadiennes, americaines, EAFE, emergentes et MSCI ACWI).
 
-**Contraintes reglementaires du Quebec** : active les limites legales en un clic (voir le lexique pour les details).
+**Actifs liquides minimum** : part minimale du portefeuille dans les classes dont le score de liquidite est d'au moins 0,75.
 
 **Contraintes ESG** :
 - Score ESG minimum du portefeuille (0-100)
@@ -171,7 +179,7 @@ L'application comporte 15 pages organisees en 6 sections.
 - Type de frontiere : Moyenne-Variance ou Moyenne-CVaR
 - Nombre de points (20 a 100) : precision de la courbe
 - Methode de covariance
-- Contraintes reglementaires (oui/non)
+- Contraintes du profil (oui/non)
 
 **Options d'affichage** :
 - Portefeuille actuel (losange rouge)
@@ -248,7 +256,7 @@ L'application comporte 15 pages organisees en 6 sections.
 |-----------|-------------|
 | Benchmark beta | 60/40 Equilibre, Politique de placement, Obligations pures (LDI), Croissance 70/30 |
 | Strategie | Max ratio d'information, Max alpha (budget TE), Min tracking error (alpha cible), Budget de risque |
-| Levier brut maximal | 1.0x a 2.0x (limite reglementaire) |
+| Levier brut maximal | 1.0x a 2.0x (limite par defaut) |
 | Position courte max/actif | 1% a 15% |
 | Spread de financement | 0 a 100 bps (cout des emprunts) |
 
@@ -263,7 +271,7 @@ L'application comporte 15 pages organisees en 6 sections.
 
 **Resultats** :
 - **8 metriques cles** : alpha brut, alpha net (apres couts), tracking error, ratio d'information, rendement combine, volatilite, levier brut, exposition nette
-- **Conformite reglementaire** : verification automatique des limites de levier
+- **Conformite** : verification automatique des limites de levier par defaut
 - **5 graphiques** :
   1. Decomposition beta/alpha par classe d'actifs (barres empilees)
   2. Carte de chaleur de l'overlay (surponderations/sous-ponderations)
@@ -313,10 +321,11 @@ L'application comporte 15 pages organisees en 6 sections.
 
 ### 3.9 Gestion - Gestion actif-passif (ALM)
 
-**Objectif** : gerer la relation entre les actifs et les engagements du fonds de pension.
+**Objectif** : gerer la relation entre les actifs et les engagements d'un regime a prestations determinees.
 
-**Configuration (sidebar)** :
-- Valeur actualisee du passif, duration du passif, taux d'actualisation, taux de croissance du passif
+La page est active seulement si le profil de fonds a un passif actuariel ; sinon elle l'indique.
+
+**Configuration (sidebar)** : valeurs du profil (passif, duration, taux d'actualisation, croissance), modifiables pour la session.
 
 **4 sections** :
 
@@ -345,7 +354,7 @@ L'application comporte 15 pages organisees en 6 sections.
 - Rapport d'optimisation complet
 - Synthese executive
 - Rapport de risque
-- Rapport de conformite reglementaire
+- Conformite a la politique de placement (bornes et limites de groupe du profil)
 - Rapport ESG
 
 **Options** :
@@ -360,6 +369,8 @@ L'application comporte 15 pages organisees en 6 sections.
 ---
 
 ## 3.11-3.15 🌱 Optimisation durable
+
+> L'univers durable fourni est un **exemple** tire du contexte d'un fonds de travailleurs quebecois (variantes « admissibles », micro-capitalisations du Quebec, scores de retombees regionales). Ses hypotheses et scores sont a adapter a votre fonds dans `sustainable/config.py`.
 
 Ces cinq pages forment un outil d'optimisation bi-critere **rendement/risque ↔ durabilite**. Elles s'utilisent en sequence.
 
@@ -396,7 +407,7 @@ Ces cinq pages forment un outil d'optimisation bi-critere **rendement/risque ↔
   - Durabilite : poids de la dimension environnementale/sociale
   - Additionnalite : poids de la contribution incrementale du financement
   - Disponibilite : poids de l'accessibilite du produit sur le marche
-  - Retombees Quebec : poids des benefices economiques locaux
+  - Retombees regionales : poids des benefices economiques locaux ou regionaux
   - Liquidite : poids de la facilite de negociation
 - **Graphique radar** : visualisation des priorites choisies
 - **Aversion au risque γ** : controle l'agressivite de l'optimisation (defaut : 2.5)
@@ -567,36 +578,47 @@ Generer le rapport
 
 ---
 
-## 5. Classes d'actifs disponibles (12)
+## 5. Classes d'actifs disponibles (17)
 
-| # | Code | Nom | Rendement attendu | Volatilite | Alternatif |
-|---|------|-----|-------------------|------------|------------|
-| 0 | ACTIONS_CDN | Actions canadiennes | 7.5% | 16% | Non |
-| 1 | ACTIONS_US | Actions americaines | 8.0% | 17% | Non |
-| 2 | ACTIONS_EAFE | Actions EAFE | 7.0% | 18% | Non |
-| 3 | ACTIONS_EMERGENTES | Actions emergentes | 9.0% | 22% | Non |
-| 4 | OBLIGATIONS_GOV_CDN | Obligations gouvernementales CDN | 3.5% | 6% | Non |
-| 5 | OBLIGATIONS_CORP | Obligations corporatives | 4.5% | 8% | Non |
-| 6 | OBLIGATIONS_INFLATION | Obligations indexees inflation | 3.0% | 7% | Non |
-| 7 | IMMOBILIER | Immobilier | 7.0% | 12% | Oui |
-| 8 | INFRASTRUCTURE | Infrastructure | 7.5% | 10% | Oui |
-| 9 | CAPITAL_INVESTISSEMENT | Capital investissement | 10.0% | 20% | Oui |
-| 10 | MATIERES_PREMIERES | Matieres premieres | 4.0% | 18% | Non |
-| 11 | ENCAISSE | Encaisse | 2.5% | 1% | Non |
+Hypotheses par defaut, remplacables dans le profil de fonds ou la page Source de donnees.
+
+| # | Code | Nom | Categorie | Rendement attendu | Volatilite |
+|---|------|-----|-----------|-------------------|------------|
+| 0 | actions_canadiennes | Actions canadiennes | Actions | 7.5% | 16% |
+| 1 | actions_americaines | Actions americaines | Actions | 8.0% | 17% |
+| 2 | actions_eafe | Actions EAFE | Actions | 7.0% | 18% |
+| 3 | actions_emergentes | Actions emergentes | Actions | 9.0% | 22% |
+| 4 | obligations_gouvernementales_cdn | Obligations gouvernementales CDN | Titres a revenu fixe | 3.5% | 6% |
+| 5 | obligations_corporatives | Obligations corporatives | Titres a revenu fixe | 4.5% | 8% |
+| 6 | obligations_indexees_inflation | Obligations indexees inflation | Titres a revenu fixe | 3.0% | 7% |
+| 7 | immobilier | Immobilier | Placements alternatifs | 7.0% | 12% |
+| 8 | infrastructure | Infrastructure | Placements alternatifs | 7.5% | 10% |
+| 9 | capital_investissement | Capital investissement | Placements alternatifs | 10.0% | 20% |
+| 10 | rendement_absolu | Rendement absolu | Placements alternatifs | 5.5% | 8% |
+| 11 | matieres_premieres | Matieres premieres | Matieres premieres | 4.0% | 18% |
+| 12 | encaisse | Encaisse | Liquidites | 2.5% | 1% |
+| 13 | actions_acwi | Actions MSCI ACWI | Actions | 7.8% | 16% |
+| 14 | dette_emergente | Dette pays emergents | Titres a revenu fixe | 5.8% | 11% |
+| 15 | dette_privee | Dette privee | Placements alternatifs | 7.5% | 6% |
+| 16 | obligations_hy | Obligations HY | Titres a revenu fixe | 5.5% | 9% |
 
 ---
 
-## 6. Contraintes reglementaires du Quebec
+## 6. Limites de politique de placement
 
-| Contrainte | Limite | Classes concernees |
-|------------|--------|--------------------|
-| Actions totales | <= 70% | CDN + US + EAFE + Emergentes |
+Les limites de groupe viennent du profil de fonds : chaque organisation saisit celles de sa propre politique de placement. Les valeurs des profils types sont **illustratives** ; ce ne sont pas des exigences reglementaires. Les lois sur les regimes de retraite (Quebec, federal, autres provinces) reposent surtout sur la regle de la personne prudente et sur des limites par emetteur, que l'application ne modelise pas.
+
+Exemple (profil type *Caisse de retraite PD - generique*) :
+
+| Limite | Valeur | Classes concernees |
+|--------|--------|--------------------|
+| Actions totales | <= 70% | Actions CDN, US, EAFE, emergentes, MSCI ACWI |
+| Titres a revenu fixe | 10% a 70% | Oblig. gouvernementales, corporatives, indexees, dette emergente, HY |
+| Placements alternatifs | <= 40% | Immobilier, infrastructure, capital investissement, rendement absolu, dette privee |
 | Capital investissement | <= 20% | Capital investissement |
-| Actifs alternatifs | <= 40% | Immobilier + Infrastructure + Capital investissement |
-| Liquidite minimale | >= 2% | Encaisse |
-| Obligations totales | >= 10%, <= 70% | Gov CDN + Corp + Inflation |
+| Liquidites minimales | >= 2% | Encaisse |
 
-### Contraintes supplementaires pour l'alpha portable
+### Limites par defaut pour l'alpha portable
 
 | Contrainte | Limite |
 |------------|--------|

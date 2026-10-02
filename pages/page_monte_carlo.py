@@ -13,6 +13,8 @@ from config import (
     get_asset_names_fr, get_expected_returns, get_covariance_matrix,
     DEFAULT_CURRENT_WEIGHTS, PensionFundConfig,
 )
+from fund_profile import ensure_session_state, get_active_profile
+from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from models.monte_carlo import MonteCarloSimulator
 from visualization.charts import ChartBuilder
@@ -21,20 +23,19 @@ from visualization.charts import ChartBuilder
 def render():
     st.title("Simulation Monte Carlo")
 
-    if "returns_data" not in st.session_state or st.session_state.returns_data is None:
-        generator = MarketDataGenerator(seed=42)
-        st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        st.session_state.pension_config = PensionFundConfig()
+    ensure_session_state()
 
     config = st.session_state.get("pension_config", PensionFundConfig())
-    weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+    weights = st.session_state.get("current_weights", get_policy_weights())
 
-    # Parametres
+    profile = get_active_profile()
+
+    # Parametres (valeurs initiales tirees du profil de fonds actif)
     st.markdown("### Parametres de simulation")
+    st.caption(f"Valeurs par defaut du profil : **{profile.nom}** (modifiables pour cette simulation).")
     col1, col2 = st.columns(2)
     with col1:
-        horizon = st.slider("Horizon (annees)", 5, 40, 20)
+        horizon = st.slider("Horizon (annees)", 5, 40, int(profile.horizon_annees))
         n_sims = st.select_slider(
             "Nombre de simulations",
             [1000, 2500, 5000, 10000, 25000], 5000,
@@ -42,20 +43,27 @@ def render():
     with col2:
         initial_assets = st.number_input(
             "Valeur initiale du portefeuille (M$)",
-            100.0, 10000.0, config.valeur_actif / 1e6, 50.0,
-        ) * 1e6
-        annual_contribution = st.number_input(
-            "Cotisations annuelles (M$)", 0.0, 500.0, 40.0, 5.0,
+            1.0, 500000.0, float(config.valeur_actif / 1e6), 10.0,
         ) * 1e6
 
     col1, col2 = st.columns(2)
     with col1:
-        annual_benefit = st.number_input(
-            "Retraits annuels (M$)", 0.0, 500.0, 57.0, 5.0,
+        annual_contribution = st.number_input(
+            "Entrees annuelles - cotisations, dons, souscriptions (M$)",
+            0.0, 50000.0, float(profile.cotisations_annuelles / 1e6), 1.0,
         ) * 1e6
+        contribution_growth = st.slider(
+            "Croissance des entrees (%)", -10.0, 10.0,
+            float(profile.croissance_cotisations * 100), 0.5,
+        ) / 100
     with col2:
+        annual_benefit = st.number_input(
+            "Sorties annuelles - prestations, decaissements, rachats (M$)",
+            0.0, 50000.0, float(profile.prestations_annuelles / 1e6), 1.0,
+        ) * 1e6
         benefit_growth = st.slider(
-            "Croissance des retraits (%)", 0.0, 8.0, 3.0, 0.5,
+            "Croissance des sorties (%)", -10.0, 10.0,
+            float(profile.croissance_prestations * 100), 0.5,
         ) / 100
 
     # Lancer la simulation
@@ -71,6 +79,7 @@ def render():
             annual_contribution=annual_contribution,
             annual_benefit=annual_benefit,
             benefit_growth_rate=benefit_growth,
+            contribution_growth_rate=contribution_growth,
             n_simulations=n_sims,
             seed=42,
         )
@@ -149,6 +158,7 @@ def render():
                     annual_contribution=annual_contribution,
                     annual_benefit=annual_benefit,
                     benefit_growth_rate=benefit_growth,
+                    contribution_growth_rate=contribution_growth,
                     n_simulations=n_sims, seed=123,
                 )
                 mc_opt = sim_opt.simulate(mc.horizon_years)

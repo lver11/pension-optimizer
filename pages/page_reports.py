@@ -13,6 +13,9 @@ from config import (
     get_asset_names_fr, get_expected_returns, get_covariance_matrix,
     DEFAULT_CURRENT_WEIGHTS, PensionFundConfig,
 )
+from fund_profile import ensure_session_state, get_active_profile
+from config import get_min_weights, get_max_weights
+from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from risk.metrics import RiskMetrics
 from risk.stress_testing import StressTester
@@ -23,14 +26,10 @@ from reports.generator import ReportGenerator
 def render():
     st.title("Generation de rapports")
 
-    if "returns_data" not in st.session_state or st.session_state.returns_data is None:
-        generator = MarketDataGenerator(seed=42)
-        st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        st.session_state.pension_config = PensionFundConfig()
+    ensure_session_state()
 
     config = st.session_state.get("pension_config", PensionFundConfig())
-    weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+    weights = st.session_state.get("current_weights", get_policy_weights())
     asset_names = get_asset_names_fr()
     returns_data = st.session_state.returns_data
 
@@ -91,10 +90,20 @@ def render():
                     esg_engine = ESGConstraintEngine(asset_names)
                     esg_analysis = esg_engine.esg_analysis(weights)
 
-                # Conformite (basee sur les contraintes du gestionnaire)
+                # Conformite : contraintes du gestionnaire si sauvegardees,
+                # sinon bornes et limites de groupe du profil de fonds actif
+                from constraints.manager import ConstraintManager, ConstraintSet
+                cs = st.session_state.get("constraint_set") or ConstraintSet(
+                    min_weights=get_min_weights(),
+                    max_weights=get_max_weights(),
+                    group_constraints=get_active_profile().group_constraints(),
+                )
+                is_ok, violations = ConstraintManager(len(asset_names), asset_names).validate_allocation(
+                    np.asarray(weights), cs,
+                )
                 compliance = {
-                    "conforme": True,
-                    "violations": [],
+                    "conforme": is_ok,
+                    "violations": violations,
                 }
 
                 # Monte Carlo

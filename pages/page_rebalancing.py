@@ -12,6 +12,8 @@ from config import (
     get_asset_names_fr, get_expected_returns, get_covariance_matrix,
     DEFAULT_CURRENT_WEIGHTS, PensionFundConfig, ASSET_DEFAULTS, ASSET_CLASSES_ORDER,
 )
+from fund_profile import ensure_session_state
+from config import get_policy_weights
 from data.generator import MarketDataGenerator
 from visualization.charts import ChartBuilder
 
@@ -41,14 +43,10 @@ TRANSACTION_COSTS_BPS = {
 def render():
     st.title("Recommandations de reequilibrage")
 
-    if "returns_data" not in st.session_state or st.session_state.returns_data is None:
-        generator = MarketDataGenerator(seed=42)
-        st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
-        st.session_state.current_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        st.session_state.pension_config = PensionFundConfig()
+    ensure_session_state()
 
     config = st.session_state.get("pension_config", PensionFundConfig())
-    current_weights = st.session_state.get("current_weights", DEFAULT_CURRENT_WEIGHTS)
+    current_weights = st.session_state.get("current_weights", get_policy_weights())
     asset_names = get_asset_names_fr()
     portfolio_value = config.valeur_actif
 
@@ -57,8 +55,8 @@ def render():
         target_weights = st.session_state.optimization_result.weights
         source = "Allocation optimisee"
     else:
-        target_weights = DEFAULT_CURRENT_WEIGHTS.copy()
-        source = "Allocation politique par defaut"
+        target_weights = get_policy_weights()
+        source = "Portefeuille de politique du profil de fonds"
 
     st.info(f"Allocation cible: **{source}**")
 
