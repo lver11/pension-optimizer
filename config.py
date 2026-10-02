@@ -57,8 +57,8 @@ ASSET_CLASSES_ORDER = [
 ]
 
 ASSET_DEFAULTS: Dict[AssetClass, AssetClassConfig] = {
-    AssetClass.ACTIONS_CDN: AssetClassConfig(AssetClass.ACTIONS_CDN, "Actions canadiennes", 0.075, 0.16, 0.95, 65.0, 0.05, 0.30, False),
-    AssetClass.ACTIONS_US: AssetClassConfig(AssetClass.ACTIONS_US, "Actions americaines", 0.080, 0.17, 0.98, 60.0, 0.05, 0.30, False),
+    AssetClass.ACTIONS_CDN: AssetClassConfig(AssetClass.ACTIONS_CDN, "Actions canadiennes", 0.075, 0.16, 0.95, 65.0, 0.00, 0.30, False),
+    AssetClass.ACTIONS_US: AssetClassConfig(AssetClass.ACTIONS_US, "Actions americaines", 0.080, 0.17, 0.98, 60.0, 0.00, 0.30, False),
     AssetClass.ACTIONS_EAFE: AssetClassConfig(AssetClass.ACTIONS_EAFE, "Actions EAFE", 0.070, 0.18, 0.90, 70.0, 0.00, 0.20, False),
     AssetClass.ACTIONS_EMERGENTES: AssetClassConfig(AssetClass.ACTIONS_EMERGENTES, "Actions emergentes", 0.090, 0.22, 0.75, 45.0, 0.00, 0.15, False),
     AssetClass.OBLIGATIONS_GOV_CDN: AssetClassConfig(AssetClass.OBLIGATIONS_GOV_CDN, "Obligations gouvernementales CDN", 0.035, 0.06, 1.00, 80.0, 0.10, 0.40, False, 7.5),
@@ -69,10 +69,10 @@ ASSET_DEFAULTS: Dict[AssetClass, AssetClassConfig] = {
     AssetClass.CAPITAL_INVESTISSEMENT: AssetClassConfig(AssetClass.CAPITAL_INVESTISSEMENT, "Capital investissement", 0.100, 0.20, 0.10, 50.0, 0.00, 0.15, True),
     AssetClass.RENDEMENT_ABSOLU: AssetClassConfig(AssetClass.RENDEMENT_ABSOLU, "Rendement absolu", 0.055, 0.08, 0.50, 50.0, 0.00, 0.15, True),
     AssetClass.MATIERES_PREMIERES: AssetClassConfig(AssetClass.MATIERES_PREMIERES, "Matieres premieres", 0.040, 0.18, 0.80, 35.0, 0.00, 0.10, False),
-    AssetClass.ENCAISSE: AssetClassConfig(AssetClass.ENCAISSE, "Encaisse", 0.025, 0.01, 1.00, 75.0, 0.02, 0.10, False, 0.25),
+    AssetClass.ENCAISSE: AssetClassConfig(AssetClass.ENCAISSE, "Encaisse", 0.025, 0.01, 1.00, 75.0, 0.00, 0.10, False, 0.25),
     AssetClass.ACTIONS_ACWI: AssetClassConfig(
         AssetClass.ACTIONS_ACWI, "Actions MSCI ACWI",
-        0.078, 0.16, 0.95, 58.0, 0.00, 0.40, False
+        0.078, 0.16, 0.95, 58.0, 0.00, 0.60, False
     ),
     AssetClass.DETTE_EMERGENTE: AssetClassConfig(
         AssetClass.DETTE_EMERGENTE, "Dette pays emergents",
@@ -109,8 +109,31 @@ DEFAULT_CORRELATION_MATRIX = np.array([
     [ 0.40, 0.50, 0.35, 0.40, 0.10, 0.60, 0.10, 0.25, 0.25, 0.35, 0.35, 0.25, 0.05, 0.45, 0.55, 0.45, 1.00],
 ])
 
+# Portefeuille de reference Fondaction (politique de placement), mappe sur les 17 classes.
+# Hypotheses de mapping :
+#  - Obligations canadiennes 25 % (FTSE Univers) : ~1/3 corporatif, ~2/3 gouvernemental
+#  - Obligations gouvernementales 10 % -> Obligations gouvernementales CDN
+#  - Obligations mondiales vertes 5 % -> Obligations corporatives (approximation)
+#  - Dette pays emergents 6 %, Actions mondiales ACWI 46 %, Rendement absolu 8 %
+#  - Marche monetaire 0 % ; aucune classe privee/immobiliere dans la reference
 DEFAULT_CURRENT_WEIGHTS = np.array([
-    0.12, 0.14, 0.08, 0.05, 0.19, 0.10, 0.05, 0.07, 0.07, 0.05, 0.03, 0.03, 0.02, 0.00, 0.00, 0.00, 0.00,
+    0.0,                      # Actions CDN (incluses dans ACWI)
+    0.0,                      # Actions US
+    0.0,                      # Actions EAFE
+    0.0,                      # Actions emergentes
+    0.10 + 0.25 * 2 / 3,      # Obligations gouvernementales CDN
+    0.25 / 3 + 0.05,          # Obligations corporatives (+ vertes)
+    0.0,                      # Obligations indexees inflation
+    0.0,                      # Immobilier
+    0.0,                      # Infrastructure
+    0.0,                      # Capital investissement
+    0.08,                     # Rendement absolu
+    0.0,                      # Matieres premieres
+    0.0,                      # Encaisse
+    0.46,                     # Actions MSCI ACWI
+    0.06,                     # Dette pays emergents
+    0.0,                      # Dette privee
+    0.0,                      # Obligations HY
 ])
 
 
@@ -119,7 +142,8 @@ class PensionFundConfig:
     nom: str = "Caisse de retraite"
     horizon_annees: int = 20
     taux_actualisation: float = 0.05
-    valeur_actif: float = 1_000_000_000.0
+    valeur_actif: float = 1_900_000_000.0
+    valeur_passif: float = 1_900_000_000.0  # utilise par la page ALM
     taux_inflation_cible: float = 0.02
     niveau_confiance_var: float = 0.95
     niveau_confiance_cvar: float = 0.95

@@ -53,8 +53,8 @@ class TestACWIParams:
     def test_min_weight_zero(self):
         assert get_min_weights()[13] == 0.0
 
-    def test_max_weight_40pct(self):
-        assert abs(get_max_weights()[13] - 0.40) < 1e-9
+    def test_max_weight_60pct(self):
+        assert abs(get_max_weights()[13] - 0.60) < 1e-9
 
 
 class TestCorrelationMatrix:
@@ -91,8 +91,8 @@ class TestWeights:
     def test_current_weights_sum_to_1(self):
         assert abs(DEFAULT_CURRENT_WEIGHTS.sum() - 1.0) < 1e-9
 
-    def test_acwi_default_weight_zero(self):
-        assert DEFAULT_CURRENT_WEIGHTS[13] == 0.0
+    def test_acwi_default_weight_matches_reference_portfolio(self):
+        assert abs(DEFAULT_CURRENT_WEIGHTS[13] - 0.46) < 1e-9
 
     @pytest.mark.parametrize("key,expected_len", [
         ("60_40_equilibre", N),

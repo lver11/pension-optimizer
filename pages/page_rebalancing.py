@@ -83,7 +83,7 @@ def render():
         "Cible (%)": "{:.1f}",
         "Ecart (pp)": "{:+.2f}",
         "Transaction (M$)": "{:+,.1f}",
-    }).applymap(
+    }).map(
         lambda v: "color: green" if "Acheter" in str(v)
         else ("color: red" if "Vendre" in str(v) else ""),
         subset=["Direction"],
