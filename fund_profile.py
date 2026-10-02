@@ -81,6 +81,9 @@ class FundProfile:
     rendements_attendus: Optional[Dict[str, float]] = None
     volatilites: Optional[Dict[str, float]] = None
 
+    # Cle du profil type d'origine ; None des que le profil est modifie et applique
+    profil_type: Optional[str] = None
+
     # ------------------------------------------------------------------
     # Conversion en vecteurs alignes sur ASSET_CLASSES_ORDER
     # ------------------------------------------------------------------
@@ -386,12 +389,23 @@ def profil_exemple_fondaction() -> FundProfile:
     )
 
 
+def _tagged(key, factory):
+    def make() -> FundProfile:
+        p = factory()
+        p.profil_type = key
+        return p
+    make.__name__ = factory.__name__
+    return make
+
+
 PROFILS_TYPES = {
-    "pd_generique": profil_pd_generique,
-    "pd_mature": profil_pd_mature,
-    "cd_equilibre": profil_cd_equilibre,
-    "fondation": profil_fondation,
-    "exemple_fondaction": profil_exemple_fondaction,
+    key: _tagged(key, f) for key, f in {
+        "pd_generique": profil_pd_generique,
+        "pd_mature": profil_pd_mature,
+        "cd_equilibre": profil_cd_equilibre,
+        "fondation": profil_fondation,
+        "exemple_fondaction": profil_exemple_fondaction,
+    }.items()
 }
 
 PROFIL_PAR_DEFAUT = "pd_generique"
@@ -444,3 +458,22 @@ def ensure_session_state() -> None:
         from data.generator import MarketDataGenerator
         generator = MarketDataGenerator(seed=42)
         st.session_state.returns_data = generator.generate_returns(n_years=20, frequency="monthly")
+        st.session_state.returns_source = {"type": "simulees", "graine": 42}
+
+
+def describe_returns_source() -> str:
+    """Description courte de la serie de rendements utilisee par les mesures ex post."""
+    import streamlit as st
+    src = st.session_state.get("returns_source") or {"type": "simulees", "graine": 42}
+    df = st.session_state.get("returns_data")
+    n = len(df) if df is not None else 0
+    if src.get("type") == "importees":
+        periode = ""
+        if df is not None and n:
+            try:
+                periode = f", {df.index[0]:%Y-%m} a {df.index[-1]:%Y-%m}"
+            except (TypeError, ValueError):
+                periode = ""
+        return f"rendements importes ({src.get('fichier', 'fichier')}, {n} periodes{periode})"
+    return (f"rendements simules ({n} mois, graine {src.get('graine', 42)}) : une trajectoire "
+            "aleatoire tiree des hypotheses avec regimes de crise, pas l'historique reel")

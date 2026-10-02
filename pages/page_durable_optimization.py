@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from ui_notes import show_durable_example_note, explain_sustainability_score
 
 from sustainable.config import (
     DURABLE_ASSETS, DURABLE_ASSET_ORDER, DURABLE_MIN_WEIGHTS, DURABLE_MAX_WEIGHTS,
@@ -57,6 +58,7 @@ def _build_optimizer(active_ids, use_durable_map, rf):
 
 def render():
     st.title("⚙️ Optimisation durable")
+    show_durable_example_note()
     st.caption("Comparez l'allocation financièrement optimale (λ=0) avec l'allocation durable optimale.")
 
     active_ids, use_durable_map = _get_active_config()
@@ -124,7 +126,7 @@ def render():
         col1.metric("Rendement", f"{result.expected_return:.2%}")
         col2.metric("Volatilité", f"{result.volatility:.2%}")
         col3.metric("Sharpe", f"{result.sharpe_ratio:.3f}")
-        col4.metric("Score durabilité", f"{result.sustainability_score:.2f}")
+        col4.metric("Score durabilité (1 à 5)", f"{result.sustainability_score:.2f}")
         return
 
     result = st.session_state.durable_result
@@ -150,13 +152,19 @@ def render():
         ("Rendement attendu", f"{result_fin.expected_return:.2%}", f"{result.expected_return:.2%}"),
         ("Volatilité", f"{result_fin.volatility:.2%}", f"{result.volatility:.2%}"),
         ("Ratio de Sharpe", f"{result_fin.sharpe_ratio:.3f}", f"{result.sharpe_ratio:.3f}"),
-        ("Score durabilité", f"{result_fin.sustainability_score:.2f}", f"{result.sustainability_score:.2f}"),
+        ("Score durabilité (1 à 5)", f"{result_fin.sustainability_score:.2f}", f"{result.sustainability_score:.2f}"),
     ]
     for label, v_fin, v_dur in rows:
         c1, c2, c3 = st.columns(3)
         c1.write(label)
         c2.write(v_fin)
         c3.write(v_dur)
+
+    explain_sustainability_score(
+        dim_weights,
+        result_fin.sustainability_score, result.sustainability_score,
+        result_fin.sharpe_ratio, result.sharpe_ratio,
+    )
 
     st.divider()
 
@@ -165,9 +173,11 @@ def render():
     with tab1:
         fig = go.Figure()
         fig.add_trace(go.Bar(name="Optimal financier", x=names,
-                             y=result_fin.weights * 100, marker_color="#1f77b4"))
+                             y=(result_fin.weights * 100).round(2), marker_color="#1f77b4",
+                             hovertemplate="%{x}<br>%{y:.2f} %<extra>Optimal financier</extra>"))
         fig.add_trace(go.Bar(name="Optimal durable", x=names,
-                             y=result.weights * 100, marker_color="#2ca02c"))
+                             y=(result.weights * 100).round(2), marker_color="#2ca02c",
+                             hovertemplate="%{x}<br>%{y:.2f} %<extra>Optimal durable</extra>"))
         fig.update_layout(barmode="group", xaxis_tickangle=-45,
                           yaxis_title="Poids (%)", height=400, margin=dict(t=20, b=100))
         st.plotly_chart(fig, use_container_width=True)
@@ -209,9 +219,9 @@ def render():
         })
         st.dataframe(
             detail_df.style.format({
-                "Optimal financier (%)": "{:.1f}",
-                "Optimal durable (%)": "{:.1f}",
-                "Écart (pp)": "{:+.1f}",
+                "Optimal financier (%)": "{:.2f}",
+                "Optimal durable (%)": "{:.2f}",
+                "Écart (pp)": "{:+.2f}",
             }),
             use_container_width=True, hide_index=True,
         )
