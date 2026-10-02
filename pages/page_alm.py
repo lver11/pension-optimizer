@@ -43,21 +43,46 @@ def render():
         return
 
     # ---------- Configuration du passif (valeurs du profil) ----------
+    measures = profile.liability_measures()
+    cashflows = profile.liability_cashflows()
+    curve = profile.yield_curve()
     st.sidebar.markdown("### Configuration du passif")
-    pv_liabilities = st.sidebar.number_input(
-        "Valeur actuelle du passif (M$)", 1.0, 500000.0,
-        float(profile.valeur_passif / 1e6), 10.0,
-    ) * 1e6
-    liability_duration = st.sidebar.slider(
-        "Duration du passif (annees)", 1.0, 30.0, float(profile.duration_passif), 0.5)
-    discount_rate = st.sidebar.slider(
-        "Taux d'actualisation (%)", 0.0, 10.0, float(profile.taux_actualisation * 100), 0.1) / 100
+    if cashflows is not None:
+        st.sidebar.caption(
+            f"Passif calcule a partir de {measures['nb_annees']} annees de flux, "
+            "actualises sur la courbe du profil."
+        )
+        pv_liabilities = measures["valeur"]
+        liability_duration = measures["duration"]
+        liability_convexity = measures["convexite"]
+        discount_rate = float(curve.rate(liability_duration))
+        st.sidebar.metric("Valeur du passif", f"{pv_liabilities/1e6:,.0f} M$")
+        st.sidebar.metric("Duration effective", f"{liability_duration:.1f} ans")
+        st.sidebar.metric("Convexite effective", f"{liability_convexity:.0f}")
+    else:
+        pv_liabilities = st.sidebar.number_input(
+            "Valeur actuelle du passif (M$)", 1.0, 500000.0,
+            float(profile.valeur_passif / 1e6), 10.0,
+        ) * 1e6
+        liability_duration = st.sidebar.slider(
+            "Duration du passif (annees)", 1.0, 30.0, float(profile.duration_passif), 0.5)
+        discount_rate = st.sidebar.slider(
+            "Taux d'actualisation (%)", 0.0, 10.0, float(profile.taux_actualisation * 100), 0.1) / 100
+        from models.liability import estimated_liability_convexity
+        default_conv = (profile.convexite_passif if profile.convexite_passif is not None
+                        else estimated_liability_convexity(liability_duration, discount_rate))
+        liability_convexity = st.sidebar.number_input(
+            "Convexite du passif", 0.0, 2000.0, float(round(default_conv)), 10.0,
+            help="Estimee pour un passif de retraite typique de cette duration. "
+                 "Importez les flux de prestations (page Profil du fonds) pour une valeur exacte.",
+        )
     liability_growth = st.sidebar.slider(
         "Croissance du passif (%)", 0.0, 10.0, float(profile.croissance_passif * 100), 0.5) / 100
 
     liability_profile = LiabilityProfile(
         present_value=pv_liabilities,
         duration=liability_duration,
+        convexity=liability_convexity,
         discount_rate=discount_rate,
         growth_rate=liability_growth,
     )
@@ -78,6 +103,8 @@ def render():
         config.taux_sans_risque, asset_names,
         get_min_weights(), get_max_weights(),
         reference_bond_index=gov_index,
+        liability_cashflows=cashflows,
+        curve=curve,
     )
 
     # ---------- Tableau de bord ALM ----------
@@ -141,25 +168,66 @@ les fixe dans sa politique de financement et de placement.
     # ---------- Sensibilite aux taux ----------
     st.markdown("### Sensibilite aux taux d'interet")
 
+    if cashflows is not None:
+        st.caption("Passif : reevaluation exacte des flux sur la courbe choquee (convexite incluse). "
+                   "Actif : duration + convexite approchee des classes a revenu fixe.")
+    else:
+        st.caption("Passif : duration + convexite (estimee ou saisie). Importez les flux de prestations "
+                   "dans le profil pour une reevaluation exacte. Actif : duration + convexite approchee.")
+
     rate_scenarios = [-200, -100, -50, 50, 100, 200]
     sensitivity_results = []
     for shock in rate_scenarios:
         sens = alm.compute_interest_rate_sensitivity(weights, asset_value, shock)
         sensitivity_results.append({
-            "Choc taux (bps)": shock,
+            "Choc taux (pb)": shock,
             "Impact actif (M$)": sens["impact_actif"] / 1e6,
             "Impact passif (M$)": sens["impact_passif"] / 1e6,
+            "dont convexite du passif (M$)": sens["effet_convexite_passif"] / 1e6,
             "Impact surplus (M$)": sens["impact_surplus"] / 1e6,
-            "Impact ratio capit. (pp)": sens["impact_ratio_capit"] * 100,
+            "Impact ratio capit. (pts)": sens["impact_ratio_capit"] * 100,
         })
 
     sens_df = pd.DataFrame(sensitivity_results)
     st.dataframe(sens_df.style.format({
         "Impact actif (M$)": "{:+,.0f}",
         "Impact passif (M$)": "{:+,.0f}",
+        "dont convexite du passif (M$)": "{:+,.0f}",
         "Impact surplus (M$)": "{:+,.0f}",
-        "Impact ratio capit. (pp)": "{:+.1f}",
+        "Impact ratio capit. (pts)": "{:+.1f}",
     }), use_container_width=True, hide_index=True)
+    st.caption("« dont convexite » : ecart entre la variation reelle du passif et l'estimation par la "
+               "duration seule. Il augmente le passif quand les taux baissent et attenue sa baisse quand ils montent.")
+
+    # ---------- Durations cles ----------
+    st.markdown("#### Exposition par segment de courbe")
+    krd = alm.key_rate_exposures(weights, asset_value)
+    krd_df = pd.DataFrame([
+        {"Echeance": f"{int(t)} ans", "Actif (k$/pb)": v["actif_dv01"] / 1e3,
+         "Passif (k$/pb)": v["passif_dv01"] / 1e3,
+         "Ecart (k$/pb)": (v["actif_dv01"] - v["passif_dv01"]) / 1e3,
+         "Couverture (%)": 100 * v["actif_dv01"] / v["passif_dv01"] if v["passif_dv01"] > 0 else np.nan}
+        for t, v in krd.items()
+    ])
+    import plotly.graph_objects as go
+    fig_krd = go.Figure()
+    fig_krd.add_trace(go.Bar(name="Actif", x=krd_df["Echeance"], y=krd_df["Actif (k$/pb)"],
+                             hovertemplate="%{x}<br>%{y:,.0f} k$/pb<extra>Actif</extra>"))
+    fig_krd.add_trace(go.Bar(name="Passif", x=krd_df["Echeance"], y=krd_df["Passif (k$/pb)"],
+                             hovertemplate="%{x}<br>%{y:,.0f} k$/pb<extra>Passif</extra>"))
+    fig_krd.update_layout(barmode="group", yaxis_title="Valeur d'un point de base (k$)",
+                          height=320, margin=dict(t=20, b=40))
+    st.plotly_chart(fig_krd, use_container_width=True)
+    st.dataframe(krd_df.style.format({
+        "Actif (k$/pb)": "{:,.0f}", "Passif (k$/pb)": "{:,.0f}",
+        "Ecart (k$/pb)": "{:+,.0f}", "Couverture (%)": "{:.0f}",
+    }), use_container_width=True, hide_index=True)
+    st.caption(
+        "Gain ou perte en milliers de dollars pour une baisse de 1 pb du taux a chaque echeance. "
+        + ("Passif : durations cles exactes calculees sur les flux. " if cashflows is not None
+           else "Passif : sans flux, toute la duration est placee a l'echeance egale a la duration (approximation). ")
+        + "Actif : chaque classe obligataire est repartie sur les deux echeances qui encadrent sa duration."
+    )
 
     st.divider()
 

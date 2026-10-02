@@ -9,6 +9,10 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 from models.base import OptimizationResult
+from models.liability import (
+    LiabilityCashflows, YieldCurve, KEY_TENORS, BP,
+    approx_convexity, bond_key_rate_profile,
+)
 
 
 @dataclass
@@ -36,6 +40,8 @@ class ALMOptimizer:
         min_weights: Optional[np.ndarray] = None,
         max_weights: Optional[np.ndarray] = None,
         reference_bond_index: Optional[int] = None,
+        liability_cashflows: Optional[LiabilityCashflows] = None,
+        curve: Optional[YieldCurve] = None,
     ):
         self.mu = expected_returns
         self.sigma = cov_matrix
@@ -47,6 +53,13 @@ class ALMOptimizer:
         self.min_weights = min_weights if min_weights is not None else np.zeros(self.n_assets)
         self.max_weights = max_weights if max_weights is not None else np.ones(self.n_assets)
         self.reference_bond_index = reference_bond_index
+        self.cashflows = liability_cashflows
+        self.curve = curve or YieldCurve.flat(liability_profile.discount_rate)
+        # Convexite approchee des classes d'actifs a revenu fixe (zero-coupon de meme duration)
+        self.asset_convexities = np.array([
+            approx_convexity(d, self.curve.rate(max(d, 1.0))) if d > 0 else 0.0
+            for d in self.durations
+        ])
 
     def compute_funded_ratio(self, asset_value: float) -> float:
         """FR = Actifs / VP(Passifs)"""
@@ -70,24 +83,66 @@ class ALMOptimizer:
     def compute_interest_rate_sensitivity(
         self, weights: np.ndarray, asset_value: float, rate_change_bps: float = 100,
     ) -> Dict:
-        """Sensibilite du surplus aux variations de taux d'interet."""
-        rate_change = rate_change_bps / 10000
+        """
+        Sensibilite du surplus a un choc parallele des taux.
 
-        # Impact sur les actifs (via duration)
+        Passif : reevaluation exacte sur la courbe choquee si les flux sont fournis,
+        sinon duration + convexite. Actif : duration + convexite approchee des
+        classes a revenu fixe.
+        """
+        dy = rate_change_bps / 10000
+        L = self.liability.present_value
+
         asset_duration = weights @ self.durations
-        asset_change = -asset_duration * rate_change * asset_value
+        asset_convexity = weights @ self.asset_convexities
+        asset_change = asset_value * (-asset_duration * dy + 0.5 * asset_convexity * dy * dy)
 
-        # Impact sur le passif (via duration du passif)
-        liability_change = -self.liability.duration * rate_change * self.liability.present_value
+        liability_linear = -self.liability.duration * dy * L
+        if self.cashflows is not None:
+            pv0 = self.cashflows.present_value(self.curve)
+            liability_change = (self.cashflows.present_value(self.curve, dy) - pv0) * (L / pv0)
+            method = "reevaluation des flux"
+        else:
+            liability_change = liability_linear + 0.5 * self.liability.convexity * dy * dy * L
+            method = "duration + convexite"
 
         surplus_change = asset_change - liability_change
+        new_ratio = (asset_value + asset_change) / (L + liability_change)
 
         return {
             "variation_taux_bps": rate_change_bps,
             "impact_actif": float(asset_change),
             "impact_passif": float(liability_change),
+            "impact_passif_duration_seule": float(liability_linear),
+            "effet_convexite_passif": float(liability_change - liability_linear),
             "impact_surplus": float(surplus_change),
-            "impact_ratio_capit": float(surplus_change / self.liability.present_value),
+            "impact_ratio_capit": float(new_ratio - asset_value / L),
+            "methode_passif": method,
+        }
+
+    def key_rate_exposures(self, weights: np.ndarray, asset_value: float) -> Dict[float, Dict[str, float]]:
+        """
+        Exposition par segment de courbe, en $ par point de base (DV01 par point cle).
+        Passif : durations cles exactes si les flux sont fournis, sinon duration
+        repartie comme un zero-coupon. Actif : chaque classe obligataire est repartie
+        sur les deux points cles qui encadrent sa duration.
+        """
+        L = self.liability.present_value
+        if self.cashflows is not None:
+            liab_krd = self.cashflows.key_rate_durations(self.curve)
+        else:
+            liab_krd = bond_key_rate_profile(self.liability.duration)
+        asset_krd = {t: 0.0 for t in KEY_TENORS}
+        for w_i, d_i in zip(weights, self.durations):
+            if w_i > 0 and d_i > 0:
+                for t, v in bond_key_rate_profile(d_i).items():
+                    asset_krd[t] += w_i * v
+        return {
+            t: {
+                "actif_dv01": asset_value * asset_krd[t] * BP,
+                "passif_dv01": L * liab_krd[t] * BP,
+            }
+            for t in KEY_TENORS
         }
 
     def compute_hedge_ratio(self, weights: np.ndarray, asset_value: float) -> float:
